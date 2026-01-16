@@ -1,0 +1,52 @@
+services:
+  traefik:
+    restart: unless-stopped
+    image: traefik:latest
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - apps
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/traefik/acme:/etc/traefik/acme
+      - ./configuration/traefik.yml:/traefik.yml:ro
+      - ./configuration/config.yml:/config.yml
+
+  client:
+    restart: unless-stopped
+    env_file:
+      - ./client/.env
+    build:
+      context: ./client
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.client.rule=Host(`operoncrm.uz`) || Host(`admin.operoncrm.uz`) || Host(`agent.operoncrm.uz`) || Host(`login.operoncrm.uz`)"
+      - "traefik.http.routers.client.entrypoints=websecure"
+      - "traefik.http.routers.client.tls=true"
+      - "traefik.http.routers.client.tls.certresolver=letsencrypt"
+      - "traefik.http.services.client.loadbalancer.server.port=3333"
+      - "traefik.docker.network=apps"
+    networks:
+      - apps
+
+  server:
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    build:
+      context: ./server
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.server.rule=Host(`api.operoncrm.uz`)"
+      - "traefik.http.routers.server.entrypoints=websecure"
+      - "traefik.http.routers.server.tls=true"
+      - "traefik.http.routers.server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.server.loadbalancer.server.port=9999"
+      - "traefik.docker.network=apps"
+    networks:
+      - apps
+
+networks:
+  apps:
+    name: apps

@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - apps
+
+  server:
+    restart: unless-stopped
+    env_file:
+      - ./server/.env
+    build:
+      context: ./server
+    networks:
+      - apps
+
+  client:
+    restart: unless-stopped
+    env_file:
+      - ./client/.env
+    build:
+      context: ./client
+    networks:
+      - apps
+
+networks:
+  apps:
+    name: apps
+
+volumes:
+  pgdata:

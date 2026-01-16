@@ -1,0 +1,16 @@
+client/node_modules
+client/.next
+client/.DS_Store
+client/next-env.d.ts
+client/.env
+
+server/.env
+server/db.sqlite
+server/.venv
+server/venv
+server/.DS_Store
+
+.vscode
+.idea
+.DS_Store
+**/__pycache__/
