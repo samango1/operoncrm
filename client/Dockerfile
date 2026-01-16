@@ -8,8 +8,6 @@ RUN npm install -g npm@11.7.0
 
 RUN npm install
 
-RUN npx prettier --write .
-
 COPY . .
 
 RUN npm run build
