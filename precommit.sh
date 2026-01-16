@@ -13,23 +13,13 @@ else
 fi
 
 if [ -d "server" ]; then
-    echo "Formatting server with Black..."
+    echo "Formatting server..."
     cd server
-
-    if command -v black &> /dev/null; then
-        black .
-        echo "Server formatting complete!"
-    else
-        echo "Black not found. Installing black..."
-        pip install black
-        black .
-        echo "Server formatting complete!"
-    fi
-
+    black .
     cd ..
+    echo "Server formatting complete!"
 else
     echo "Server directory not found"
 fi
 
-echo "=========================================="
 echo "All formatting complete!"
