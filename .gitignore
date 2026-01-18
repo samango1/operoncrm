@@ -3,9 +3,11 @@ client/.next
 client/.DS_Store
 client/next-env.d.ts
 client/.env
+client/.env.local
 
 server/.env
 server/db.sqlite
+server/config/db.sqlite3
 server/.venv
 server/venv
 server/.DS_Store

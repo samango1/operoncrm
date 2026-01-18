@@ -37,9 +37,9 @@ CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3333",
-    "http://login.operoncrm.uz:3333",
-    "http://admin.operoncrm.uz:3333",
-    "http://agent.operoncrm.uz:3333",
+    "http://login.operoncrm.d:3333",
+    "http://admin.operoncrm.d:3333",
+    "http://agent.operoncrm.d:3333",
 ]
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^http:\/\/(?:.*\.)?operoncrm\.uz:3333$"]
 
