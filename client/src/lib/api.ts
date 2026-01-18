@@ -2,9 +2,10 @@ import axios from 'axios';
 
 import { LoginPayload, TokenResponse, RefreshPayload, AccessTokenResponse } from '@/types/api/auth';
 import { PaginatedResponse } from '@/types/api/pagination';
+import { BaseQuery } from '@/types/api/common';
 import { User } from '@/types/api/users';
 import { Company } from '@/types/api/companies';
-import { BaseQuery } from '@/types/api/common';
+import { Transaction } from '@/types/api/transactions';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9999/api',
@@ -86,6 +87,7 @@ async function getPaginated<T>(url: string, query?: BaseQuery): Promise<Paginate
   return response.data;
 }
 
+// AUTHENTICATION
 export const login = async (payload: LoginPayload): Promise<TokenResponse> => {
   const response = await apiClient.post<TokenResponse>('/token/', payload);
   return response.data;
@@ -95,6 +97,7 @@ export const refreshToken = async (payload: RefreshPayload): Promise<AccessToken
   return response.data;
 };
 
+// USERS
 export const getUsers = async (query?: BaseQuery): Promise<PaginatedResponse<User>> => {
   return getPaginated<User>('/users/', query);
 };
@@ -120,6 +123,7 @@ export const deleteUser = async (id: string): Promise<User> => {
   return response.data;
 };
 
+// COMPANIES
 export const getCompanies = async (query?: BaseQuery): Promise<PaginatedResponse<Company>> => {
   return getPaginated<Company>('/companies/', query);
 };
@@ -142,6 +146,32 @@ export const updateCompany = async (id: string, payload: Partial<Company>): Prom
 };
 export const deleteCompany = async (id: string): Promise<Company> => {
   const response = await apiClient.delete<Company>(`/companies/${id}/`);
+  return response.data;
+};
+
+// TRANSACTIONS
+export const getTransactions = async (query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
+  return getPaginated<Transaction>('/transactions/', query);
+};
+export const getTransactionsMe = async (): Promise<Transaction[]> => {
+  const response = await apiClient.get<Transaction[]>('/transactions/me/');
+  return response.data;
+};
+export const getTransactionById = async (id: string, query?: BaseQuery): Promise<Transaction> => {
+  const params = cleanParams(query);
+  const response = await apiClient.get<Transaction>(`/transactions/${id}/`, { params });
+  return response.data;
+};
+export const createTransaction = async (payload: Partial<Transaction>): Promise<Transaction> => {
+  const response = await apiClient.post<Transaction>('/transactions/', payload);
+  return response.data;
+};
+export const updateTransaction = async (id: string, payload: Partial<Transaction>): Promise<Transaction> => {
+  const response = await apiClient.patch<Transaction>(`/transactions/${id}/`, payload);
+  return response.data;
+};
+export const deleteTransaction = async (id: string): Promise<Transaction> => {
+  const response = await apiClient.delete<Transaction>(`/transactions/${id}/`);
   return response.data;
 };
 

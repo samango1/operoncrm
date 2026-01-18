@@ -77,11 +77,19 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
     setError(null);
     if (!validate()) return;
 
+    const normalizePhone = (raw: string): number => {
+      const digits = raw.replace(/\D/g, '');
+      if (digits.startsWith('998')) {
+        return Number(digits);
+      }
+      return Number(`998${digits}`);
+    };
+
     setLoading(true);
     try {
       const payload: Partial<User> = {
         name: form.name.trim(),
-        phone: Number(form.phone),
+        phone: normalizePhone(form.phone),
         platform_role: form.platform_role as PlatformRole,
       };
 
@@ -148,11 +156,12 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
 
       <InputDefault
         label='Телефон'
+        prewritten='+998'
         value={form.phone}
         name='phone'
         type='number'
         onChange={(e) => handleChange('phone')(e)}
-        placeholder='+998901234567'
+        placeholder='901234567'
         error={fieldErrors.phone}
         required
       />
