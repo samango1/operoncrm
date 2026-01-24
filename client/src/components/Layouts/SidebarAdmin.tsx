@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Users, Building2, Banknote, Settings } from 'lucide-react';
+import { Home, Users, Building2, Banknote, Contact, Settings } from 'lucide-react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
@@ -10,6 +10,7 @@ const items = [
   { path: '/users', label: 'Пользователи', icon: Users },
   { path: '/companies', label: 'Компании', icon: Building2 },
   { path: '/transactions', label: 'Транзакции', icon: Banknote },
+  { path: '/clients', label: 'Клиенты', icon: Contact },
 ];
 
 export default function SidebarAdmin() {

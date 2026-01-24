@@ -1,22 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import InputDefault from '@/components/Inputs/InputDefault';
+import TextAreaDefault from '../Inputs/TextAreaDefault';
 import SelectOption, { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Company } from '@/types/api/companies';
 import type { Transaction } from '@/types/api/transactions';
-import { createTransaction } from '@/lib/api';
+import type { Client } from '@/types/api/clients';
+import { createTransaction, updateTransaction } from '@/lib/api';
 
 type Props = {
   companies: Company[];
+  clients?: Client[];
   defaultCompanyId?: string;
+  transaction?: Transaction;
   onCancel: () => void;
   onSuccess: (created?: Transaction) => void | Promise<void>;
 };
 
-export default function TransactionForm({ companies, defaultCompanyId, onCancel, onSuccess }: Props) {
-  const [companyId, setCompanyId] = useState<string | undefined>(defaultCompanyId ? String(defaultCompanyId) : undefined);
+export default function TransactionForm({
+  companies,
+  clients = [],
+  defaultCompanyId,
+  transaction,
+  onCancel,
+  onSuccess,
+}: Props) {
+  const initialCompanyId = defaultCompanyId ? String(defaultCompanyId) : undefined;
+  const [companyId, setCompanyId] = useState<string | undefined>(initialCompanyId);
+  const [clientId, setClientId] = useState<string | undefined>(undefined);
   const [initialAmount, setInitialAmount] = useState<number | ''>('');
   const [discount, setDiscount] = useState<number | ''>('');
   const [type, setType] = useState<'income' | 'outcome'>('income');
@@ -28,10 +41,55 @@ export default function TransactionForm({ companies, defaultCompanyId, onCancel,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!transaction) return;
+    setCompanyId(
+      typeof transaction.company === 'string' ? transaction.company : String((transaction.company as Company)?.id ?? undefined)
+    );
+    setClientId(
+      typeof transaction.client === 'string'
+        ? transaction.client
+        : transaction.client
+          ? String((transaction.client as Client)?.id ?? undefined)
+          : undefined
+    );
+    setInitialAmount(transaction.initial_amount ?? transaction.amount ?? '');
+    setDiscount(transaction.discount_amount ?? 0);
+    setType(transaction.type ?? 'income');
+    setMethod(transaction.method ?? 'cash');
+    setCurrency(transaction.currency ?? 'UZS');
+    setDate((transaction.date ?? transaction.created_at ?? new Date().toISOString()).slice(0, 10));
+    setDescription(transaction.description ?? '');
+  }, [transaction]);
+
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
   }));
+
+  const getClientCompanyId = (c: Client): string | undefined => {
+    if (!c.company) return undefined;
+    return typeof c.company === 'string' ? c.company : String((c.company as Company)?.id ?? undefined);
+  };
+
+  const filteredClients = (clients ?? []).filter((c) => {
+    if (!companyId) return false;
+    const cid = getClientCompanyId(c);
+    return cid === companyId;
+  });
+
+  const clientOptions: OptionType<string>[] = filteredClients.map((c) => ({
+    value: String(c.id),
+    label: c.name ? `${c.name}${c.phone ? ` (${c.phone})` : ''}` : String(c.id),
+  }));
+
+  useEffect(() => {
+    if (!clientId) return;
+    const exists = filteredClients.some((c) => String(c.id) === String(clientId));
+    if (!exists) {
+      setClientId(undefined);
+    }
+  }, [companyId, clients]);
 
   const typeOptions: OptionType<string>[] = [
     { value: 'income', label: 'Доход' },
@@ -70,20 +128,32 @@ export default function TransactionForm({ companies, defaultCompanyId, onCancel,
       date,
       description: description || undefined,
       company: companyId,
+      client: clientId || undefined,
     };
 
     try {
       setLoading(true);
-      const created = await createTransaction(payload);
-      await onSuccess(created);
+      let resp: Transaction;
+      if (transaction && transaction.id) {
+        resp = await updateTransaction(String(transaction.id), payload);
+      } else {
+        resp = await createTransaction(payload);
+      }
+      await onSuccess(resp);
       onCancel();
     } catch (err) {
-      console.error('createTransaction error:', err);
-      setError('Ошибка при создании транзакции');
+      console.error('saveTransaction error:', err);
+      setError('Ошибка при сохранении транзакции');
     } finally {
       setLoading(false);
     }
   };
+
+  const clientPlaceholder = !companyId
+    ? 'Сначала выберите компанию'
+    : filteredClients.length === 0
+    ? 'Клиенты для компании не найдены'
+    : 'Выберите клиента';
 
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
@@ -93,6 +163,14 @@ export default function TransactionForm({ companies, defaultCompanyId, onCancel,
         options={companyOptions}
         value={companyId}
         onChange={(v) => setCompanyId(v as string | undefined)}
+      />
+
+      <SelectOption
+        label='Клиент (опционально)'
+        placeholder={clientPlaceholder}
+        options={clientOptions}
+        value={clientId}
+        onChange={(v) => setClientId(v as string | undefined)}
       />
 
       <div className='flex gap-3'>
@@ -142,12 +220,7 @@ export default function TransactionForm({ companies, defaultCompanyId, onCancel,
 
       <div>
         <label className='mb-1 block text-md font-medium text-gray-700'>Описание</label>
-        <textarea
-          className='w-full border rounded-md p-2'
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <TextAreaDefault value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
@@ -157,7 +230,7 @@ export default function TransactionForm({ companies, defaultCompanyId, onCancel,
           Отмена
         </ButtonDefault>
         <ButtonDefault type='submit' variant='positive' disabled={loading}>
-          {loading ? 'Сохранение...' : 'Создать'}
+          {loading ? 'Сохранение...' : transaction ? 'Сохранить' : 'Создать'}
         </ButtonDefault>
       </div>
     </form>

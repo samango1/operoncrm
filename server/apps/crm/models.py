@@ -63,6 +63,48 @@ class Company(models.Model):
         super().save(*args, **kwargs)
 
 
+class Client(models.Model):
+    TYPE_INDIVIDUAL = "individual"
+    TYPE_COMPANY = "company"
+    TYPE_GROUP = "group"
+
+    TYPE_CHOICES = [
+        (TYPE_INDIVIDUAL, "Individual"),
+        (TYPE_COMPANY, "Company"),
+        (TYPE_GROUP, "Group"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_INDIVIDUAL)
+    name = models.CharField(max_length=255)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    company = models.ForeignKey(
+        Company,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE,
+        related_name="clients",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_clients",
+    )
+    invalid = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.id})"
+
+
 class Transaction(models.Model):
     TYPE_INCOME = "income"
     TYPE_OUTCOME = "outcome"
@@ -95,7 +137,7 @@ class Transaction(models.Model):
     description = models.TextField(blank=True, null=True)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
     client = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        "Client",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

@@ -2,7 +2,7 @@ from apps.users.models import User
 from apps.users.serializers import UserShallowSerializer
 from rest_framework import serializers
 
-from .models import Company, Transaction
+from .models import Company, Transaction, Client
 
 
 class MemberSerializer(serializers.Serializer):
@@ -69,12 +69,13 @@ class CompanySerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class CompanyField(serializers.PrimaryKeyRelatedField):
     def to_representation(self, value):
         if value is None:
             return None
 
-        if hasattr(value, "name"):
+        if isinstance(value, Company):
             return CompanySerializer(value, context=self.context).data
 
         pk = getattr(value, "pk", value)
@@ -86,16 +87,102 @@ class CompanyField(serializers.PrimaryKeyRelatedField):
 
         return CompanySerializer(company, context=self.context).data
 
+    def to_internal_value(self, data):
+        if data is None:
+            if self.allow_null:
+                return None
+            raise serializers.ValidationError("This field may not be null.")
+
+        if isinstance(data, dict):
+            pk = data.get("id") or data.get("pk")
+            if not pk:
+                raise serializers.ValidationError('Company object must include "id" field.')
+            return super().to_internal_value(pk)
+
+        return super().to_internal_value(data)
+
+
+class ClientField(serializers.PrimaryKeyRelatedField):
+    def to_representation(self, value):
+        if value is None:
+            return None
+
+        if isinstance(value, Client):
+            return ClientSerializer(value, context=self.context).data
+
+        pk = getattr(value, "pk", value)
+
+        try:
+            client = Client.objects.get(pk=pk)
+        except Client.DoesNotExist:
+            return None
+
+        return ClientSerializer(client, context=self.context).data
+
+    def to_internal_value(self, data):
+        if data is None:
+            if self.allow_null:
+                return None
+            raise serializers.ValidationError("This field may not be null.")
+
+        if isinstance(data, dict):
+            pk = data.get("id") or data.get("pk")
+            if not pk:
+                raise serializers.ValidationError('Client object must include "id" field.')
+            return super().to_internal_value(pk)
+
+        return super().to_internal_value(data)
+
+
+class ClientSerializer(serializers.ModelSerializer):
+    company = CompanyField(queryset=Company.objects.all())
+    created_by = UserShallowSerializer(read_only=True)
+
+    class Meta:
+        model = Client
+        fields = [
+            "id",
+            "type",
+            "name",
+            "phone",
+            "description",
+            "company",
+            "created_by",
+            "invalid",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at", "invalid"]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["id"] = str(instance.id)
+        if instance.company:
+            company_data = ret.get("company")
+            if not company_data:
+                ret["company"] = CompanySerializer(instance.company, context=self.context).data
+                company_data = ret["company"]
+            company_data["id"] = str(instance.company.id)
+        if instance.created_by:
+            created_by = ret.get("created_by")
+            if created_by:
+                created_by["id"] = str(instance.created_by.id)
+        return ret
+
+    def create(self, validated_data):
+        client = Client.objects.create(**validated_data)
+        return client
+
+    def update(self, instance, validated_data):
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
+        instance.full_clean()
+        instance.save()
+        return instance
+
 
 class TransactionSerializer(serializers.ModelSerializer):
-    client = UserShallowSerializer(read_only=True)
-    client_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(),
-        write_only=True,
-        source="client",
-        allow_null=True,
-        required=False,
-    )
+    client = ClientField(queryset=Client.objects.all(), allow_null=True, required=False)
 
     company = CompanyField(queryset=Company.objects.all())
 
@@ -122,7 +209,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             "currency",
             "client",
             "company",
-            "client_id",
             "invalid",
             "created_at",
             "updated_at",
@@ -132,11 +218,22 @@ class TransactionSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         ret["id"] = str(instance.id)
-        
+
         if instance.client:
-            ret["client"]["id"] = str(instance.client.id)
+            client_data = ret.get("client")
+            if client_data is None:
+                ret["client"] = ClientSerializer(instance.client, context=self.context).data
+                ret["client"]["id"] = str(instance.client.id)
+            else:
+                client_data["id"] = str(instance.client.id)
+
         if instance.company:
-            ret["company"]["id"] = str(instance.company.id)
+            company_data = ret.get("company")
+            if not company_data:
+                ret["company"] = CompanySerializer(instance.company, context=self.context).data
+                company_data = ret["company"]
+            company_data["id"] = str(instance.company.id)
+
         return ret
 
     def validate_initial_amount(self, value):

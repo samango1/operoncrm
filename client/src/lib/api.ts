@@ -6,6 +6,7 @@ import { BaseQuery } from '@/types/api/common';
 import { User } from '@/types/api/users';
 import { Company } from '@/types/api/companies';
 import { Transaction } from '@/types/api/transactions';
+import { Client } from '@/types/api/clients';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9999/api',
@@ -93,7 +94,7 @@ export const login = async (payload: LoginPayload): Promise<TokenResponse> => {
   return response.data;
 };
 export const refreshToken = async (payload: RefreshPayload): Promise<AccessTokenResponse> => {
-  const response = await apiClient.post<AccessTokenResponse>('/token/refresh', payload);
+  const response = await apiClient.post<AccessTokenResponse>('/token/refresh/', payload);
   return response.data;
 };
 
@@ -153,10 +154,6 @@ export const deleteCompany = async (id: string): Promise<Company> => {
 export const getTransactions = async (query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
   return getPaginated<Transaction>('/transactions/', query);
 };
-export const getTransactionsMe = async (): Promise<Transaction[]> => {
-  const response = await apiClient.get<Transaction[]>('/transactions/me/');
-  return response.data;
-};
 export const getTransactionById = async (id: string, query?: BaseQuery): Promise<Transaction> => {
   const params = cleanParams(query);
   const response = await apiClient.get<Transaction>(`/transactions/${id}/`, { params });
@@ -172,6 +169,28 @@ export const updateTransaction = async (id: string, payload: Partial<Transaction
 };
 export const deleteTransaction = async (id: string): Promise<Transaction> => {
   const response = await apiClient.delete<Transaction>(`/transactions/${id}/`);
+  return response.data;
+};
+
+// CLIENTS
+export const getClients = async (query?: BaseQuery): Promise<PaginatedResponse<Client>> => {
+  return getPaginated<Client>('/clients/', query);
+};
+export const getClientById = async (id: string, query?: BaseQuery): Promise<Client> => {
+  const params = cleanParams(query);
+  const response = await apiClient.get<Client>(`/clients/${id}/`, { params });
+  return response.data;
+};
+export const createClient = async (payload: Partial<Client>): Promise<Client> => {
+  const response = await apiClient.post<Client>('/clients/', payload);
+  return response.data;
+};
+export const updateClient = async (id: string, payload: Partial<Client>): Promise<Client> => {
+  const response = await apiClient.patch<Client>(`/clients/${id}/`, payload);
+  return response.data;
+};
+export const deleteClient = async (id: string): Promise<Client> => {
+  const response = await apiClient.delete<Client>(`/clients/${id}/`);
   return response.data;
 };
 

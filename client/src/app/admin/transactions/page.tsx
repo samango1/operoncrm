@@ -3,8 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Transaction } from '@/types/api/transactions';
 import type { Company } from '@/types/api/companies';
+import type { Client } from '@/types/api/clients';
 
-import { getCompanies, getTransactions } from '@/lib/api';
+import { getCompanies, getTransactions, getClients, getTransactionById } from '@/lib/api';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
@@ -13,9 +14,12 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
 import TransactionForm from '@/components/Forms/TransactionForm';
 
+import { Pencil, Eye } from 'lucide-react';
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,24 +29,32 @@ export default function TransactionsPage() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
   const fetchAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [txRes, companiesRes] = await Promise.all([
+      const [txRes, companiesRes, clientsRes] = await Promise.all([
         getTransactions({ page: 1, page_size: 10000 }),
         getCompanies({ page: 1, page_size: 1000 }),
+        getClients({ page: 1, page_size: 1000 }),
       ]);
-      setTransactions(txRes.results ?? txRes);
-      setCompanies(companiesRes.results ?? companiesRes);
+      setTransactions(txRes.results as Transaction[]);
+      setCompanies(companiesRes.results as Company[]);
+      setClients(clientsRes.results as Client[]);
       const initialPaging: Record<string, { page: number; pageSize: number }> = {};
-      (companiesRes.results ?? companiesRes).forEach((c: Company) => {
+      (companiesRes.results as Company[]).forEach((c: Company) => {
         initialPaging[String(c.id)] = { page: 1, pageSize: 10 };
       });
       setCompanyPaging((prev) => ({ ...initialPaging, ...prev }));
     } catch (err) {
       console.error('fetchAll transactions error:', err);
-      setError('Не удалось загрузить транзакции или компании');
+      setError('Не удалось загрузить транзакции, компании или клиентов');
     } finally {
       setLoading(false);
     }
@@ -55,7 +67,7 @@ export default function TransactionsPage() {
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
     transactions.forEach((t) => {
-      const cid = typeof t.company === 'string' ? t.company : String(t.company?.id ?? t.company);
+      const cid = typeof t.company === 'string' ? t.company : String((t.company as Company)?.id ?? t.company);
       if (!map.has(cid)) map.set(cid, []);
       map.get(cid)!.push(t);
     });
@@ -85,6 +97,47 @@ export default function TransactionsPage() {
     return String(raw);
   };
 
+  const openViewModal = async (txId: string) => {
+    setIsModalOpen(true);
+    setIsEditing(false);
+    setSelectedTransaction(null);
+    setModalLoading(true);
+    setModalError(null);
+    try {
+      const item = await getTransactionById(txId);
+      setSelectedTransaction(item as Transaction);
+    } catch (err) {
+      console.error('getTransactionById error:', err);
+      setModalError('Не удалось загрузить транзакцию');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const openEditModal = async (txId: string) => {
+    setIsModalOpen(true);
+    setIsEditing(true);
+    setSelectedTransaction(null);
+    setModalLoading(true);
+    setModalError(null);
+    try {
+      const item = await getTransactionById(txId);
+      setSelectedTransaction(item as Transaction);
+    } catch (err) {
+      console.error('getTransactionById error:', err);
+      setModalError('Не удалось загрузить транзакцию');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedTransaction(null);
+    setModalError(null);
+    setIsEditing(false);
+  };
+
   const columns: Column<Transaction>[] = [
     {
       key: 'date',
@@ -108,8 +161,37 @@ export default function TransactionsPage() {
       render: (r) => {
         if (!r.client) return '';
         if (typeof r.client === 'string') return r.client;
-        return (r.client as any).name ?? (r.client as any).phone ?? String((r.client as any).id ?? '');
+        const clientObj = r.client as Client;
+        return clientObj.name ?? clientObj.phone ?? String(clientObj.id ?? '');
       },
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (row: Transaction) => (
+        <div className='flex gap-2'>
+          <ButtonDefault
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              openViewModal(String(row.id));
+            }}
+            type='button'
+          >
+            <Eye />
+          </ButtonDefault>
+
+          <ButtonDefault
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              openEditModal(String(row.id));
+            }}
+            type='button'
+          >
+            <Pencil />
+          </ButtonDefault>
+        </div>
+      ),
+      className: 'w-40',
     },
   ];
 
@@ -144,7 +226,10 @@ export default function TransactionsPage() {
       const compText = [comp?.name ?? '', comp?.slug ?? '', cid].join(' ').toLowerCase();
       const txs = grouped.get(cid) ?? [];
       const txText = txs
-        .map((t) => `${t.description ?? ''} ${typeof t.client === 'string' ? t.client : ((t.client as any)?.name ?? '')}`)
+        .map((t) => {
+          const clientPart = typeof t.client === 'string' ? t.client : (t.client?.name ?? '');
+          return `${t.description ?? ''} ${clientPart}`;
+        })
         .join(' ')
         .toLowerCase();
       return compText.includes(q) || txText.includes(q);
@@ -219,7 +304,97 @@ export default function TransactionsPage() {
         <div>
           <h2 className='text-xl font-semibold mb-4'>Новая транзакция</h2>
 
-          <TransactionForm companies={companies} onCancel={closeCreate} onSuccess={onCreated} />
+          <TransactionForm companies={companies} clients={clients} onCancel={closeCreate} onSuccess={onCreated} />
+        </div>
+      </ModalWindowDefault>
+
+      <ModalWindowDefault isOpen={isModalOpen} onClose={closeModal} showCloseIcon>
+        <div>
+          {isEditing ? (
+            <>
+              <h2 className='text-xl font-semibold mb-4'>
+                {selectedTransaction ? 'Редактирование транзакции' : 'Загрузка транзакции...'}
+              </h2>
+
+              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+
+              {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
+
+              {!modalLoading && selectedTransaction && (
+                <TransactionForm
+                  transaction={selectedTransaction}
+                  companies={companies}
+                  clients={clients}
+                  defaultCompanyId={
+                    typeof selectedTransaction.company === 'string'
+                      ? selectedTransaction.company
+                      : ((selectedTransaction.company as Company)?.id ?? '')
+                  }
+                  onCancel={closeModal}
+                  onSuccess={async () => {
+                    closeModal();
+                    await fetchAll();
+                  }}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <h2 className='text-xl font-semibold mb-4'>Просмотр транзакции</h2>
+
+              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+
+              {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
+
+              {!modalLoading && selectedTransaction && (
+                <div className='space-y-2 text-sm text-gray-800'>
+                  <div>
+                    <strong>ID:</strong> {selectedTransaction.id}
+                  </div>
+                  <div>
+                    <strong>Дата:</strong> {(selectedTransaction.date ?? selectedTransaction.created_at ?? '').slice(0, 10)}
+                  </div>
+                  <div>
+                    <strong>Тип:</strong> {selectedTransaction.type}
+                  </div>
+                  <div>
+                    <strong>Сумма:</strong> {formatAmount(selectedTransaction.initial_amount ?? selectedTransaction.amount)}{' '}
+                    {selectedTransaction.currency}
+                  </div>
+                  <div>
+                    <strong>Клиент:</strong>{' '}
+                    {selectedTransaction.client
+                      ? typeof selectedTransaction.client === 'string'
+                        ? selectedTransaction.client
+                        : ((selectedTransaction.client as Client).name ??
+                          (selectedTransaction.client as Client).phone ??
+                          String((selectedTransaction.client as Client).id))
+                      : ''}
+                  </div>
+                  <div>
+                    <strong>Компания:</strong>{' '}
+                    {selectedTransaction.company
+                      ? typeof selectedTransaction.company === 'string'
+                        ? selectedTransaction.company
+                        : ((selectedTransaction.company as Company).name ?? String((selectedTransaction.company as Company).id))
+                      : ''}
+                  </div>
+                  <div>
+                    <strong>Описание:</strong> {selectedTransaction.description ?? ''}
+                  </div>
+                  <div>
+                    <strong>Создан:</strong> {selectedTransaction.created_at ?? ''}
+                  </div>
+                  <div>
+                    <strong>Обновлен:</strong> {selectedTransaction.updated_at ?? ''}
+                  </div>
+                  <div>
+                    <strong>Недействительная:</strong> {selectedTransaction.invalid ? 'Да' : 'Нет'}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </ModalWindowDefault>
     </main>

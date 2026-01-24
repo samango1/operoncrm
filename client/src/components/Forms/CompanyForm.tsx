@@ -22,7 +22,7 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
   const [slug, setSlug] = useState<string>(company?.slug ?? '');
   const [plan, setPlan] = useState<UsagePlan>(company?.plan ?? ('start' as UsagePlan));
   const [members, setMembers] = useState<string[]>(
-    Array.isArray(company?.members) ? (company!.members as any[]).map((m) => String((m as any).id ?? m)) : []
+    company?.members.map(m => m.id) ?? []
   );
 
   const [users, setUsers] = useState<User[]>([]);
@@ -57,9 +57,7 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
     setName(company?.name ?? '');
     setSlug(company?.slug ?? '');
     setPlan(company?.plan ?? ('start' as UsagePlan));
-    const membersArr = Array.isArray(company?.members)
-      ? (company!.members as any[]).map((m) => String((m as any).id ?? m))
-      : [];
+    const membersArr = company?.members.map(m => m.id) ?? [];
     setMembers(membersArr);
     prevMembersRef.current = membersArr;
   }, [company]);
@@ -124,15 +122,13 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
     if (company && company.id) {
       const prev = prevMembersRef.current;
       const payload: Partial<Company> = {
-        members: newMembers.map((m) => ({ id: m })),
+        members: newMembers.map(id => ({ id })),
       };
 
       setUpdatingMembers(true);
       try {
         const resp = await updateCompany(String(company.id), payload);
-        const returnedMembers = Array.isArray(resp.members)
-          ? resp.members.map((m: any) => String((m as any).id ?? m))
-          : newMembers;
+        const returnedMembers = resp.members.map(m => m.id);
         setMembers(returnedMembers);
         prevMembersRef.current = returnedMembers;
 

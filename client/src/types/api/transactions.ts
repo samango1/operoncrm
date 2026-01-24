@@ -1,4 +1,4 @@
-import { User } from '@/types/api/users';
+import { Client } from './clients';
 import { Company } from '@/types/api/companies';
 
 export type TransactionType = 'income' | 'outcome';
@@ -15,7 +15,7 @@ export interface Transaction {
   date: string;
   description?: string;
   currency: TransactionCurrency;
-  client?: User | string;
+  client?: Client | string;
   company: Company | string;
   created_at?: string;
   updated_at?: string;

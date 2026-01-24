@@ -28,7 +28,7 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false); // true = form mode (create/edit), false = view mode
+  const [isEditing, setIsEditing] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -224,7 +224,7 @@ export default function UsersPage() {
       <Pagination currentPage={currentPage} pageSize={pageSize} total={count} onPageChange={handlePageChange} />
 
       <ModalWindowDefault isOpen={isModalOpen} onClose={closeModal} showCloseIcon>
-        <div className='max-h-[70vh] overflow-auto p-1'>
+        <div>
           {isEditing ? (
             <>
               <h2 className='text-xl font-semibold mb-4'>

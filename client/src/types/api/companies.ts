@@ -2,11 +2,16 @@ import { User } from '@/types/api/users';
 
 export type UsagePlan = 'start' | 'basic' | 'basic';
 
+export interface CompanyMember {
+  id: string;
+  telegram_id?: number | null;
+}
+
 export interface Company {
   id: string;
   name: string;
   slug: string;
-  members: Array<Object>;
+  members: CompanyMember[];
   plan: UsagePlan;
   created_by: User;
   created_at: string;
