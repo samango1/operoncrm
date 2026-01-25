@@ -63,6 +63,29 @@ class Company(models.Model):
         super().save(*args, **kwargs)
 
 
+class CompanyMember(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="memberships"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="company_memberships"
+    )
+    telegram_id = models.IntegerField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("company", "user")
+        indexes = [
+            models.Index(fields=["company", "user"]),
+            models.Index(fields=["user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} @ {self.company_id}"
+
+
 class Client(models.Model):
     TYPE_INDIVIDUAL = "individual"
     TYPE_COMPANY = "company"
@@ -103,6 +126,11 @@ class Client(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.id})"
+
+    def soft_delete(self):
+        if not self.invalid:
+            self.invalid = True
+            self.save(update_fields=["invalid", "updated_at"])
 
 
 class Transaction(models.Model):
@@ -173,6 +201,11 @@ class Transaction(models.Model):
             raise ValueError("Discount cannot exceed initial amount.")
         self.amount = self.initial_amount - self.discount_amount
         super().save(*args, **kwargs)
+
+    def soft_delete(self):
+        if not self.invalid:
+            self.invalid = True
+            self.save(update_fields=["invalid", "updated_at"])
 
     def __str__(self):
         return f"Transaction {self.id} ({self.type}) — {self.amount} {self.currency}"

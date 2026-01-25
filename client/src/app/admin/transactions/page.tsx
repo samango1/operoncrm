@@ -5,13 +5,14 @@ import type { Transaction } from '@/types/api/transactions';
 import type { Company } from '@/types/api/companies';
 import type { Client } from '@/types/api/clients';
 
-import { getCompanies, getTransactions, getClients, getTransactionById } from '@/lib/api';
+import { getCompanies, getCompanyTransactions, getClients, getCompanyTransactionById } from '@/lib/api';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
+import SelectOption from '@/components/Inputs/SelectOption';
 import TransactionForm from '@/components/Forms/TransactionForm';
 
 import { Pencil, Eye } from 'lucide-react';
@@ -23,9 +24,11 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [globalSearch, setGlobalSearch] = useState<string>('');
-
-  const [companyPaging, setCompanyPaging] = useState<Record<string, { page: number; pageSize: number }>>({});
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalCount, setTotalCount] = useState<number>(0);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -35,52 +38,64 @@ export default function TransactionsPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const fetchAll = async () => {
+  const fetchCompanies = async () => {
+    try {
+      const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
+      setCompanies(companiesRes.results as Company[]);
+    } catch (err) {
+      console.error('fetchCompanies error:', err);
+      setError('Не удалось загрузить компании');
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const clientsRes = await getClients({ page: 1, page_size: 1000 });
+      setClients(clientsRes.results as Client[]);
+    } catch (err) {
+      console.error('fetchClients error:', err);
+    }
+  };
+
+  const fetchTransactions = async (companyId: string, page = currentPage, ps = pageSize, search = globalSearch) => {
+    if (!companyId) {
+      setTransactions([]);
+      setTotalCount(0);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const [txRes, companiesRes, clientsRes] = await Promise.all([
-        getTransactions({ page: 1, page_size: 10000 }),
-        getCompanies({ page: 1, page_size: 1000 }),
-        getClients({ page: 1, page_size: 1000 }),
-      ]);
+      const txRes = await getCompanyTransactions(companyId, { page, page_size: ps, search });
       setTransactions(txRes.results as Transaction[]);
-      setCompanies(companiesRes.results as Company[]);
-      setClients(clientsRes.results as Client[]);
-      const initialPaging: Record<string, { page: number; pageSize: number }> = {};
-      (companiesRes.results as Company[]).forEach((c: Company) => {
-        initialPaging[String(c.id)] = { page: 1, pageSize: 10 };
-      });
-      setCompanyPaging((prev) => ({ ...initialPaging, ...prev }));
+      setTotalCount(txRes.count);
     } catch (err) {
-      console.error('fetchAll transactions error:', err);
-      setError('Не удалось загрузить транзакции, компании или клиентов');
+      console.error('fetchTransactions error:', err);
+      setError('Не удалось загрузить транзакции');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAll();
+    fetchCompanies();
+    fetchClients();
   }, []);
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, Transaction[]>();
-    transactions.forEach((t) => {
-      const cid = typeof t.company === 'string' ? t.company : String((t.company as Company)?.id ?? t.company);
-      if (!map.has(cid)) map.set(cid, []);
-      map.get(cid)!.push(t);
-    });
-    for (const [k, arr] of map.entries()) {
-      arr.sort((a, b) => (b.date ?? b.created_at ?? '').localeCompare(a.date ?? a.created_at ?? ''));
-      map.set(k, arr);
+  useEffect(() => {
+    if (selectedCompanyId) {
+      fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch);
+    } else {
+      setTransactions([]);
+      setTotalCount(0);
     }
-    return map;
-  }, [transactions]);
+  }, [selectedCompanyId, currentPage, pageSize, globalSearch]);
 
-  const resolveCompany = (companyId: string): Company | undefined => {
-    return companies.find((c) => String(c.id) === String(companyId));
-  };
+  const selectedCompany = useMemo(() => {
+    if (!selectedCompanyId) return undefined;
+    return companies.find((c) => String(c.id) === String(selectedCompanyId));
+  }, [selectedCompanyId, companies]);
 
   const formatAmount = (amount?: number | string) => {
     if (amount === undefined || amount === null || amount === '') return '';
@@ -98,16 +113,17 @@ export default function TransactionsPage() {
   };
 
   const openViewModal = async (txId: string) => {
+    if (!selectedCompanyId) return;
     setIsModalOpen(true);
     setIsEditing(false);
     setSelectedTransaction(null);
     setModalLoading(true);
     setModalError(null);
     try {
-      const item = await getTransactionById(txId);
+      const item = await getCompanyTransactionById(selectedCompanyId, txId);
       setSelectedTransaction(item as Transaction);
     } catch (err) {
-      console.error('getTransactionById error:', err);
+      console.error('getCompanyTransactionById error:', err);
       setModalError('Не удалось загрузить транзакцию');
     } finally {
       setModalLoading(false);
@@ -115,16 +131,17 @@ export default function TransactionsPage() {
   };
 
   const openEditModal = async (txId: string) => {
+    if (!selectedCompanyId) return;
     setIsModalOpen(true);
     setIsEditing(true);
     setSelectedTransaction(null);
     setModalLoading(true);
     setModalError(null);
     try {
-      const item = await getTransactionById(txId);
+      const item = await getCompanyTransactionById(selectedCompanyId, txId);
       setSelectedTransaction(item as Transaction);
     } catch (err) {
-      console.error('getTransactionById error:', err);
+      console.error('getCompanyTransactionById error:', err);
       setModalError('Не удалось загрузить транзакцию');
     } finally {
       setModalLoading(false);
@@ -204,107 +221,103 @@ export default function TransactionsPage() {
   };
 
   const onCreated = async () => {
-    await fetchAll();
+    if (selectedCompanyId) await fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch);
   };
 
-  const handleCompanyPageChange = (companyId: string, page: number, newPageSize?: number) => {
-    setCompanyPaging((prev) => {
-      const cur = prev[companyId] ?? { page: 1, pageSize: 10 };
-      const ns = newPageSize ?? cur.pageSize;
-      return { ...prev, [companyId]: { page, pageSize: ns } };
-    });
-  };
-
-  const filteredCompanyIds = useMemo(() => {
-    const groupedKeys = Array.from(grouped.keys());
-    if (!globalSearch || globalSearch.trim() === '') {
-      return groupedKeys;
+  const handlePageChange = (page: number, newPageSize?: number) => {
+    if (newPageSize && newPageSize !== pageSize) {
+      setPageSize(newPageSize);
+      setCurrentPage(1);
+    } else {
+      setCurrentPage(page);
     }
-    const q = globalSearch.trim().toLowerCase();
-    return groupedKeys.filter((cid) => {
-      const comp = resolveCompany(cid);
-      const compText = [comp?.name ?? '', comp?.slug ?? '', cid].join(' ').toLowerCase();
-      const txs = grouped.get(cid) ?? [];
-      const txText = txs
-        .map((t) => {
-          const clientPart = typeof t.client === 'string' ? t.client : (t.client?.name ?? '');
-          return `${t.description ?? ''} ${clientPart}`;
-        })
-        .join(' ')
-        .toLowerCase();
-      return compText.includes(q) || txText.includes(q);
-    });
-  }, [globalSearch, grouped, companies]);
+  };
+
+  const handleSearch = (q: string) => {
+    setGlobalSearch(q);
+    setCurrentPage(1);
+  };
+
+  const companyOptions = useMemo(() => {
+    return companies.map((c) => ({
+      value: String(c.id),
+      label: c.name || c.slug || String(c.id),
+    }));
+  }, [companies]);
 
   return (
     <main className='p-6 max-w-6xl mx-auto'>
       <header className='mb-6 flex justify-between items-center'>
         <div>
           <h1 className='text-2xl font-semibold'>Транзакции</h1>
-          <p className='text-sm text-gray-500'>Всего транзакций: {transactions.length}</p>
+          <p className='text-sm text-gray-500'>
+            {selectedCompanyId ? `Всего транзакций: ${totalCount}` : 'Выберите компанию для просмотра транзакций'}
+          </p>
         </div>
 
-        <ButtonDefault onClick={openCreate} variant='positive'>
+        <ButtonDefault onClick={openCreate} variant='positive' disabled={!selectedCompanyId}>
           Добавить
         </ButtonDefault>
       </header>
 
-      <div className='mb-4'>
-        <SearchInput
-          initialValue={globalSearch}
-          onSearch={(q) => setGlobalSearch(q)}
-          placeholder='Поиск по компании, описанию, клиенту...'
-        />
+      <div className='mb-4 space-y-4'>
+        <div>
+          <SelectOption
+            label='Компания'
+            placeholder='Выберите компанию'
+            options={companyOptions}
+            value={selectedCompanyId}
+            onChange={(value) => {
+              setSelectedCompanyId(value);
+              setCurrentPage(1);
+              setGlobalSearch('');
+            }}
+          />
+        </div>
+
+        {selectedCompanyId && (
+          <SearchInput initialValue={globalSearch} onSearch={handleSearch} placeholder='Поиск по описанию, клиенту...' />
+        )}
       </div>
 
       {error && <div className='text-red-600 mb-4'>{error}</div>}
 
-      <section className='space-y-8'>
-        {loading ? (
-          <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
-        ) : filteredCompanyIds.length === 0 ? (
-          <div className='text-gray-600'>Нет транзакций, соответствующих запросу.</div>
-        ) : (
-          filteredCompanyIds.map((companyId) => {
-            const txs = grouped.get(companyId) ?? [];
-            const comp = resolveCompany(companyId);
-            const paging = companyPaging[companyId] ?? { page: 1, pageSize: 10 };
-            const start = (paging.page - 1) * paging.pageSize;
-            const pageSlice = txs.slice(start, start + paging.pageSize);
+      {!selectedCompanyId ? (
+        <div className='text-gray-600 p-6 bg-white/5 rounded'>Выберите компанию для просмотра транзакций</div>
+      ) : loading ? (
+        <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
+      ) : transactions.length === 0 ? (
+        <div className='text-gray-600 p-6 bg-white/5 rounded'>
+          {globalSearch ? 'Нет транзакций, соответствующих запросу.' : 'Нет транзакций для этой компании.'}
+        </div>
+      ) : (
+        <section className='space-y-4'>
+          <div className='flex justify-between items-center mb-3'>
+            <div>
+              <h2 className='text-lg font-medium'>{selectedCompany?.name || `Компания ${selectedCompanyId}`}</h2>
+              <div className='text-sm text-gray-500'>Транзакций: {totalCount}</div>
+            </div>
+          </div>
 
-            return (
-              <div key={companyId} className='bg-white/5 rounded p-4'>
-                <div className='flex justify-between items-center mb-3'>
-                  <div>
-                    <h2 className='text-lg font-medium'>{comp ? comp.name : `Компания ${companyId}`}</h2>
-                    <div className='text-sm text-gray-500'>Транзакций: {txs.length}</div>
-                  </div>
-                  <div className='text-sm text-gray-600'>
-                    <span className='mr-2'>Показано: {Math.min(txs.length, paging.pageSize)}</span>
-                  </div>
-                </div>
+          <TableDefault<Transaction> columns={columns} data={transactions} className='bg-transparent' />
 
-                <TableDefault<Transaction> columns={columns} data={pageSlice} className='bg-transparent' />
-
-                <div className='mt-3'>
-                  <Pagination
-                    currentPage={paging.page}
-                    pageSize={paging.pageSize}
-                    total={txs.length}
-                    onPageChange={(page, newSize) => handleCompanyPageChange(companyId, page, newSize)}
-                  />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </section>
+          <div className='mt-3'>
+            <Pagination currentPage={currentPage} pageSize={pageSize} total={totalCount} onPageChange={handlePageChange} />
+          </div>
+        </section>
+      )}
 
       <ModalWindowDefault isOpen={isCreateOpen} onClose={closeCreate} showCloseIcon>
         <div>
           <h2 className='text-xl font-semibold mb-4'>Новая транзакция</h2>
 
-          <TransactionForm companies={companies} clients={clients} onCancel={closeCreate} onSuccess={onCreated} />
+          <TransactionForm
+            companies={companies}
+            clients={clients}
+            defaultCompanyId={selectedCompanyId}
+            onCancel={closeCreate}
+            onSuccess={onCreated}
+          />
         </div>
       </ModalWindowDefault>
 
@@ -333,7 +346,9 @@ export default function TransactionsPage() {
                   onCancel={closeModal}
                   onSuccess={async () => {
                     closeModal();
-                    await fetchAll();
+                    if (selectedCompanyId) {
+                      await fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch);
+                    }
                   }}
                 />
               )}

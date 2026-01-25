@@ -152,8 +152,8 @@ export default function TransactionForm({
   const clientPlaceholder = !companyId
     ? 'Сначала выберите компанию'
     : filteredClients.length === 0
-    ? 'Клиенты для компании не найдены'
-    : 'Выберите клиента';
+      ? 'Клиенты для компании не найдены'
+      : 'Выберите клиента';
 
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>

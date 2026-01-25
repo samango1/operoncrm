@@ -150,6 +150,52 @@ export const deleteCompany = async (id: string): Promise<Company> => {
   return response.data;
 };
 
+// COMPANIES TRANSACTIONS
+export const getCompanyTransactions = async (companyId: string, query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
+  return getPaginated<Transaction>(`/companies/${companyId}/transactions/`, query);
+};
+export const createCompanyTransaction = async (companyId: string, payload: Partial<Transaction>): Promise<Transaction> => {
+  const response = await apiClient.post<Transaction>(`/companies/${companyId}/transactions/`, payload);
+  return response.data;
+};
+export const getCompanyTransactionById = async (companyId: string, transactionId: string): Promise<Transaction> => {
+  const response = await apiClient.get<Transaction>(`/companies/${companyId}/transactions/${transactionId}/`);
+  return response.data;
+};
+export const updateCompanyTransaction = async (
+  companyId: string,
+  transactionId: string,
+  payload: Partial<Transaction>
+): Promise<Transaction> => {
+  const response = await apiClient.patch<Transaction>(`/companies/${companyId}/transactions/${transactionId}/`, payload);
+  return response.data;
+};
+export const deleteCompanyTransaction = async (companyId: string, transactionId: string): Promise<Transaction> => {
+  const response = await apiClient.delete<Transaction>(`/companies/${companyId}/transactions/${transactionId}/`);
+  return response.data;
+};
+
+// COMPANIES CLIENTS
+export const getCompanyClients = async (companyId: string, query?: BaseQuery): Promise<PaginatedResponse<Client>> => {
+  return getPaginated<Client>(`/companies/${companyId}/clients/`, query);
+};
+export const createCompanyClient = async (companyId: string, payload: Partial<Client>): Promise<Client> => {
+  const response = await apiClient.post<Client>(`/companies/${companyId}/clients/`, payload);
+  return response.data;
+};
+export const getCompanyClientById = async (companyId: string, clientId: string): Promise<Client> => {
+  const response = await apiClient.get<Client>(`/companies/${companyId}/clients/${clientId}/`);
+  return response.data;
+};
+export const updateCompanyClient = async (companyId: string, clientId: string, payload: Partial<Client>): Promise<Client> => {
+  const response = await apiClient.patch<Client>(`/companies/${companyId}/clients/${clientId}/`, payload);
+  return response.data;
+};
+export const deleteCompanyClient = async (companyId: string, clientId: string): Promise<Client> => {
+  const response = await apiClient.delete<Client>(`/companies/${companyId}/clients/${clientId}/`);
+  return response.data;
+};
+
 // TRANSACTIONS
 export const getTransactions = async (query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
   return getPaginated<Transaction>('/transactions/', query);
