@@ -16,7 +16,9 @@ const items = [
 export default function SidebarAdmin() {
   const router = useRouter();
   const pathname = usePathname();
+
   if (pathname?.includes('/login')) return null;
+  if (pathname?.includes('/not-allowed')) return null;
 
   return (
     <aside className='h-screen w-80 p-3'>
