@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { getClients, getClientById } from '@/lib/api';
+import { formatPhoneDisplay } from '@/lib/phone';
 import type { Client } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
 
@@ -116,7 +117,7 @@ export default function ClientsPage() {
 
   const columns: Column<Client>[] = [
     { key: 'name', label: 'Имя / Название' },
-    { key: 'phone', label: 'Телефон' },
+    { key: 'phone', label: 'Телефон', render: (row) => formatPhoneDisplay(String(row.phone ?? '')) },
     { key: 'type', label: 'Тип' },
     {
       key: 'company',
@@ -131,7 +132,7 @@ export default function ClientsPage() {
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Действия',
       render: (row: Client) => (
         <div className='flex gap-2'>
           <ButtonDefault

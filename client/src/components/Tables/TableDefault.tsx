@@ -33,7 +33,7 @@ export default function TableDefault<T extends Record<string, any>>({
   };
 
   return (
-    <div className={clsx('bg-white rounded-xl shadow-md border border-gray-200', className)}>
+    <div className={clsx('bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden', className)}>
       <div className='hidden md:block overflow-x-auto'>
         <table className='min-w-full divide-y divide-gray-200'>
           <thead className='bg-gray-50'>

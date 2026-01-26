@@ -7,6 +7,7 @@ import SelectOption from '../Inputs/SelectOption';
 
 import { User, PlatformRole } from '@/types/api/users';
 import { createUser, updateUser, deleteUser } from '@/lib/api';
+import { formatLocalPhone, isLocalPhoneComplete, toFullPhoneNumber } from '@/lib/phone';
 
 interface UserFormProps {
   user?: User | null;
@@ -39,7 +40,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
     if (user) {
       setForm({
         name: user.name ?? '',
-        phone: String(user.phone ?? ''),
+        phone: formatLocalPhone(String(user.phone ?? '')),
         password: '',
         platform_role: (user.platform_role as PlatformRole) ?? '',
       });
@@ -58,12 +59,14 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!user && !form.password) errs.password = 'Пароль обязателен';
+    if (!isLocalPhoneComplete(form.phone)) errs.phone = 'Телефон должен содержать 9 цифр';
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleChange = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm((prev) => ({ ...prev, [k]: e.target.value }));
+    const value = k === 'phone' ? formatLocalPhone(String(e.target.value)) : e.target.value;
+    setForm((prev) => ({ ...prev, [k]: value }));
     setFieldErrors((prev) => ({ ...prev, [k]: '' }));
   };
   const handleSelectChange = (value: PlatformRole | '' | undefined) => {
@@ -77,19 +80,11 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
     setError(null);
     if (!validate()) return;
 
-    const normalizePhone = (raw: string): number => {
-      const digits = raw.replace(/\D/g, '');
-      if (digits.startsWith('998')) {
-        return Number(digits);
-      }
-      return Number(`998${digits}`);
-    };
-
     setLoading(true);
     try {
       const payload: Partial<User> = {
         name: form.name.trim(),
-        phone: normalizePhone(form.phone),
+        phone: Number(toFullPhoneNumber(form.phone)),
         platform_role: form.platform_role as PlatformRole,
       };
 
@@ -159,9 +154,12 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
         prewritten='+998'
         value={form.phone}
         name='phone'
-        type='number'
+        type='tel'
+        inputMode='numeric'
+        maxLength={12}
+        autoComplete='tel'
         onChange={(e) => handleChange('phone')(e)}
-        placeholder='901234567'
+        placeholder='90 123 45 67'
         error={fieldErrors.phone}
         required
       />

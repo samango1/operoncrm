@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { getUsers, getUserById } from '@/lib/api';
+import { formatPhoneDisplay } from '@/lib/phone';
 import type { User } from '@/types/api/users';
 
 import Pagination from '@/components/Layouts/Pagination';
@@ -114,12 +115,12 @@ export default function UsersPage() {
   };
 
   const columns: Column<User>[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'phone', label: 'Phone' },
-    { key: 'platform_role', label: 'Role' },
+    { key: 'name', label: 'Имя' },
+    { key: 'phone', label: 'Телефон', render: (row) => formatPhoneDisplay(String(row.phone ?? '')) },
+    { key: 'platform_role', label: 'Роль' },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Действия',
       render: (row: User) => (
         <div className='flex gap-2'>
           <ButtonDefault

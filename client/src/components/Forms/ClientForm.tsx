@@ -14,6 +14,11 @@ import {
   updateCompanyClient,
   deleteCompanyClient,
 } from '@/lib/api';
+import { 
+  formatLocalPhone, 
+  isLocalPhoneComplete, 
+  toFullPhoneNumber 
+} from '@/lib/phone';
 import type { Client, ClientType } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
 import type { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
@@ -34,7 +39,7 @@ const extractCompanyId = (company?: Company | string): string | undefined => {
 
 export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId, companiesOverride }: Props) {
   const [name, setName] = useState<string>(client?.name ?? '');
-  const [phone, setPhone] = useState<string>(client?.phone ?? '');
+  const [phone, setPhone] = useState<string>(formatLocalPhone(client?.phone ?? ''));
   const [description, setDescription] = useState<string>(client?.description ?? '');
   const [type, setType] = useState<'individual' | 'company' | 'group'>(client?.type ?? 'individual');
   const [companyId, setCompanyId] = useState<string | undefined>(fixedCompanyId ?? extractCompanyId(client?.company));
@@ -44,10 +49,11 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [companyError, setCompanyError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(client?.name ?? '');
-    setPhone(client?.phone ?? '');
+    setPhone(formatLocalPhone(client?.phone ?? ''));
     setDescription(client?.description ?? '');
     setType((client?.type as ClientType) ?? 'individual');
     setCompanyId(fixedCompanyId ?? extractCompanyId(client?.company));
@@ -90,13 +96,18 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
+    setCompanyError(null);
 
     if (!name.trim()) {
       setError('Имя/название обязательно');
       return;
     }
-    if (!phone.trim()) {
-      setError('Телефон обязателен');
+    if (!fixedCompanyId && !companyId) {
+      setCompanyError('Компания обязательна');
+      return;
+    }
+    if (!isLocalPhoneComplete(phone)) {
+      setError('Телефон должен содержать 9 цифр');
       return;
     }
 
@@ -104,7 +115,7 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
     try {
       const payload: Partial<Client> = {
         name: name.trim(),
-        phone: phone.trim(),
+        phone: toFullPhoneNumber(phone),
         description: description ? description.trim() : undefined,
         type,
         company: companyId ?? undefined,
@@ -162,7 +173,18 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
     <form onSubmit={handleSubmit} className='space-y-4'>
       <InputDefault value={name} label='Имя / Название' onChange={(e) => setName(e.target.value)} required />
 
-      <InputDefault value={phone} label='Телефон' onChange={(e) => setPhone(e.target.value)} required />
+      <InputDefault
+        value={phone}
+        label='Телефон'
+        prewritten='+998'
+        type='tel'
+        inputMode='numeric'
+        maxLength={12}
+        autoComplete='tel'
+        placeholder='90 123 45 67'
+        onChange={(e) => setPhone(formatLocalPhone(e.target.value))}
+        required
+      />
 
       <SelectOption
         label='Тип'
@@ -174,6 +196,18 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         value={type}
         onChange={(v) => setType((v as ClientType) ?? 'individual')}
       />
+
+      {!fixedCompanyId && (
+        <SelectOption
+          label='Компания'
+          placeholder={loadingCompanies ? 'Загрузка...' : 'Выберите компанию'}
+          options={companyOptions}
+          value={companyId}
+          onChange={(v) => setCompanyId(v as string | undefined)}
+          disabled={loadingCompanies || companyOptions.length === 0}
+          error={companyError ?? undefined}
+        />
+      )}
 
       <div>
         <label className='mb-1 block text-md font-medium text-gray-700'>Описание</label>

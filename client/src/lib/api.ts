@@ -53,7 +53,7 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const resp = await apiClient.post<AccessTokenResponse>('/token/refresh', { refresh });
+        const resp = await apiClient.post<AccessTokenResponse>('/token/refresh/', { refresh });
         const newAccess = resp.data.access;
 
         const expires = (() => {

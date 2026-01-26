@@ -114,12 +114,12 @@ export default function CompaniesPage() {
   };
 
   const columns: Column<Company>[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'slug', label: 'Slug' },
-    { key: 'plan', label: 'Plan' },
+    { key: 'name', label: 'Название' },
+    { key: 'slug', label: 'Слаг' },
+    { key: 'plan', label: 'Тариф' },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Действия',
       render: (row: Company) => (
         <div className='flex gap-2'>
           <ButtonDefault

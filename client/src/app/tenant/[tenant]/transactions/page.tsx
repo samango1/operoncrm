@@ -7,6 +7,7 @@ import type { Company } from '@/types/api/companies';
 import type { Client } from '@/types/api/clients';
 
 import { getCompanyBySlug, getCompanyTransactions, getCompanyClients, getCompanyTransactionById } from '@/lib/api';
+import { formatPhoneDisplay } from '@/lib/phone';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
@@ -198,12 +199,13 @@ export default function TenantTransactionsPage() {
         if (!r.client) return '';
         if (typeof r.client === 'string') return r.client;
         const clientObj = r.client as Client;
-        return clientObj.name ?? clientObj.phone ?? String(clientObj.id ?? '');
+        const phone = formatPhoneDisplay(String(clientObj.phone ?? ''));
+        return clientObj.name ?? (phone || String(clientObj.id ?? ''));
       },
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Действия',
       render: (row: Transaction) => (
         <div className='flex gap-2'>
           <ButtonDefault

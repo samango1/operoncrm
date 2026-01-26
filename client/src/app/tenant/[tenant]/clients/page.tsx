@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getCompanyBySlug, getCompanyClients, getCompanyClientById } from '@/lib/api';
+import { formatPhoneDisplay } from '@/lib/phone';
 import type { Client } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
 
@@ -146,10 +147,10 @@ export default function TenantClientsPage() {
   const columns: Column<Client>[] = [
     { key: 'name', label: 'Имя / Название' },
     { key: 'type', label: 'Тип' },
-    { key: 'phone', label: 'Телефон' },
+    { key: 'phone', label: 'Телефон', render: (row) => formatPhoneDisplay(String(row.phone ?? '')) },
     {
       key: 'actions',
-      label: 'Actions',
+      label: 'Действия',
       render: (row: Client) => (
         <div className='flex gap-2'>
           <ButtonDefault

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { login } from '@/lib/api';
 import { useCookies } from '@/hooks/useCookies';
 import { getJwtExpiryDate } from '@/lib/jwt';
+import { formatLocalPhone, isLocalPhoneComplete, toFullPhoneNumber } from '@/lib/phone';
 import InputDefault from '@/components/Inputs/InputDefault';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
@@ -23,7 +24,12 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setState((s) => ({ ...s, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (name === 'phone') {
+      setState((s) => ({ ...s, phone: formatLocalPhone(value) }));
+      return;
+    }
+    setState((s) => ({ ...s, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,8 +38,13 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
+      if (!isLocalPhoneComplete(state.phone)) {
+        setError('Введите корректный номер телефона');
+        setLoading(false);
+        return;
+      }
       const payload = {
-        phone: '998' + state.phone,
+        phone: toFullPhoneNumber(state.phone),
         password: state.password,
       };
 
@@ -76,9 +87,12 @@ export default function LoginForm() {
           name='phone'
           value={state.phone}
           onChange={handleChange}
-          placeholder='901234567'
+          placeholder='90 123 45 67'
           prewritten='+998'
-          type='number'
+          type='tel'
+          inputMode='numeric'
+          maxLength={12}
+          autoComplete='tel'
           required
         />
 
