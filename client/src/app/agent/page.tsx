@@ -1,3 +1,9 @@
+import PageHeaderText from '@/components/Headers/PageHeaderText';
+
 export default function AgentPage() {
-  return <h1>Agent Panel</h1>;
+  return (
+    <>
+      <PageHeaderText title='Панель агента' subtitle='Управление вашими компаниями, клиентами и транзакциями' />
+    </>
+  );
 }

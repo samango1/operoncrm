@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Users, Building2, Banknote, Contact, Settings } from 'lucide-react';
+import { Home, Users, Building2, Banknote, Contact } from 'lucide-react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
@@ -13,7 +13,7 @@ const items = [
   { path: '/clients', label: 'Клиенты', icon: Contact },
 ];
 
-export default function SidebarAdmin() {
+export default function SidebarAgent() {
   const router = useRouter();
   const pathname = usePathname();
   if (pathname?.includes('/login')) return null;
