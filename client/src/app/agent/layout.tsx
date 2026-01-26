@@ -10,7 +10,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
         <div className='flex h-screen'>
           <SidebarAgent />
 
-          <main className='flex-1 overflow-auto'>
+          <main className='flex-1 overflow-auto pb-20 md:pb-0'>
             <ContainerDefault>{children}</ContainerDefault>
           </main>
         </div>

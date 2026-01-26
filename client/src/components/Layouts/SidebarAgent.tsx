@@ -19,23 +19,23 @@ export default function SidebarAgent() {
   if (pathname?.includes('/login')) return null;
 
   return (
-    <aside className='h-screen w-80 p-3'>
-      <div className='h-full rounded-xl bg-white shadow-md flex flex-col'>
-        <div className='px-4 py-3 text-2xl font-semibold text-gray-700'>OperonCRM</div>
+    <aside className='fixed inset-x-0 bottom-0 z-40 w-full p-2 md:static md:h-screen md:w-80 md:p-3'>
+      <div className='h-full rounded-2xl bg-white shadow-md flex md:flex-col flex-row items-center md:items-stretch border border-gray-200 md:border-0'>
+        <div className='hidden md:block px-4 py-3 text-2xl font-semibold text-gray-700'>OperonCRM</div>
 
-        <nav className='flex-1 px-2 space-y-1'>
+        <nav className='flex-1 px-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full'>
           {items.map(({ path, label, icon: Icon }) => (
             <ButtonDefault
               variant='navigation'
               key={path}
               className={clsx(
-                'group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-md transition',
+                'group flex-1 md:flex-none md:w-full flex items-center md:items-center justify-center md:justify-start gap-2 md:gap-3 px-3 py-2 rounded-xl text-md transition',
                 pathname === path && 'bg-black/5 text-gray-900'
               )}
               onClick={() => router.push(path)}
             >
-              <Icon className='w-4 h-4 opacity-70 group-hover:opacity-100' />
-              <span>{label}</span>
+              <Icon className='w-5 h-5 opacity-70 group-hover:opacity-100' />
+              <span className='hidden md:inline'>{label}</span>
             </ButtonDefault>
           ))}
         </nav>
