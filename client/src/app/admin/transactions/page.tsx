@@ -255,7 +255,18 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        <ButtonDefault onClick={openCreate} variant='positive' disabled={!selectedCompanyId}>
+        <ButtonDefault
+          type='button'
+          variant='positive'
+          onClick={() => {
+            if (!selectedCompanyId) {
+              alert('Сначала выберите компанию');
+              console.log('error');
+              return;
+            }
+            openCreate();
+          }}
+        >
           Добавить
         </ButtonDefault>
       </header>
