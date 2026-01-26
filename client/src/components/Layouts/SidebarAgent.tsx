@@ -23,7 +23,7 @@ export default function SidebarAgent() {
       <div className='h-full rounded-2xl bg-white shadow-md flex md:flex-col flex-row items-center md:items-stretch border border-gray-200 md:border-0'>
         <div className='hidden md:block px-4 py-3 text-2xl font-semibold text-gray-700'>OperonCRM</div>
 
-        <nav className='flex-1 px-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full'>
+        <nav className='flex-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full'>
           {items.map(({ path, label, icon: Icon }) => (
             <ButtonDefault
               variant='navigation'

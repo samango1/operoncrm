@@ -194,8 +194,8 @@ export default function CompaniesPage() {
   };
 
   return (
-    <main className='p-6 max-w-6xl mx-auto'>
-      <header className='mb-6 flex justify-between'>
+    <>
+      <section className='mb-6 flex justify-between'>
         <div>
           <h1 className='text-2xl font-semibold'>Компании</h1>
           <p className='text-sm text-gray-500'>Всего: {count}</p>
@@ -205,7 +205,7 @@ export default function CompaniesPage() {
             Добавить
           </ButtonDefault>
         </div>
-      </header>
+      </section>
 
       <div className='mb-4 flex items-center justify-between gap-4'>
         <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск компаний...' />
@@ -294,6 +294,6 @@ export default function CompaniesPage() {
           )}
         </div>
       </ModalWindowDefault>
-    </main>
+    </>
   );
 }

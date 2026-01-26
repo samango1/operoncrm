@@ -194,8 +194,8 @@ export default function UsersPage() {
   };
 
   return (
-    <main className='p-6 max-w-6xl mx-auto'>
-      <header className='mb-6 flex justify-between'>
+    <>
+      <section className='mb-6 flex justify-between'>
         <div>
           <h1 className='text-2xl font-semibold'>Пользователи</h1>
           <p className='text-sm text-gray-500'>Всего: {count}</p>
@@ -205,7 +205,7 @@ export default function UsersPage() {
             Добавить
           </ButtonDefault>
         </div>
-      </header>
+      </section>
 
       <div className='mb-4 flex items-center justify-between gap-4'>
         <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск пользователей...' />
@@ -295,6 +295,6 @@ export default function UsersPage() {
           )}
         </div>
       </ModalWindowDefault>
-    </main>
+    </>
   );
 }

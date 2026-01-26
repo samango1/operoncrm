@@ -246,8 +246,8 @@ export default function TransactionsPage() {
   }, [companies]);
 
   return (
-    <main className='p-6 max-w-6xl mx-auto'>
-      <header className='mb-6 flex justify-between items-center'>
+    <>
+      <section className='mb-6 flex justify-between items-center'>
         <div>
           <h1 className='text-2xl font-semibold'>Транзакции</h1>
           <p className='text-sm text-gray-500'>
@@ -268,7 +268,7 @@ export default function TransactionsPage() {
         >
           Добавить
         </ButtonDefault>
-      </header>
+      </section>
 
       <div className='mb-4 space-y-4'>
         <div>
@@ -422,6 +422,6 @@ export default function TransactionsPage() {
           )}
         </div>
       </ModalWindowDefault>
-    </main>
+    </>
   );
 }
