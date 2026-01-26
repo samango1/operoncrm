@@ -261,7 +261,6 @@ export default function TransactionsPage() {
           onClick={() => {
             if (!selectedCompanyId) {
               alert('Сначала выберите компанию');
-              console.log('error');
               return;
             }
             openCreate();
