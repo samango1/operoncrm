@@ -67,7 +67,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className='max-w-md mx-auto mt-10 p-6 bg-white rounded-lg'>
+    <div className='max-w-md mx-auto mt-10 p-6 bg-white shadow-md rounded-lg'>
       <h2 className='mb-3 text-2xl font-bold'>Вход в систему</h2>
 
       <form onSubmit={handleSubmit} className='space-y-4'>
