@@ -10,7 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className='flex h-screen'>
           <SidebarAdmin />
 
-          <main className='flex-1 overflow-auto'>
+          <main className='flex-1 overflow-auto pb-20 md:pb-0'>
             <ContainerDefault>{children}</ContainerDefault>
           </main>
         </div>
