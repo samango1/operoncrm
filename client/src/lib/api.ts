@@ -132,6 +132,11 @@ export const getCompaniesMe = async (): Promise<Company[]> => {
   const response = await apiClient.get<Company[]>('/companies/me/');
   return response.data;
 };
+export const getCompanyBySlug = async (slug: string, query?: BaseQuery): Promise<Company> => {
+  const params = cleanParams(query);
+  const response = await apiClient.get<Company>(`/companies/slug/${slug}/`, { params });
+  return response.data;
+};
 export const getCompanyById = async (id: string, query?: BaseQuery): Promise<Company> => {
   const params = cleanParams(query);
   const response = await apiClient.get<Company>(`/companies/${id}/`, { params });

@@ -142,6 +142,8 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
             perms = [IsAuthenticated(), IsAdmin()]
         elif self.action == "me":
             perms = [IsAuthenticated()]
+        elif self.action == "slug_to_id":
+            perms = [IsAuthenticated(), IsAdminOrAgent()]
         elif self.action == "list":
             perms = [IsAuthenticated(), IsAdminOrAgent()]
         elif self.action == "create":
@@ -202,6 +204,15 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
 
         serializer = self.get_serializer(company_qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        parameters=[OpenApiParameter(name="slug", required=True, type=OpenApiTypes.STR, description="Company slug")],
+        operation_id="companies_slug_to_id",
+    )
+    @action(detail=False, methods=["get"], url_path=r"slug/(?P<slug>[^/.]+)")
+    def slug_to_id(self, request, slug=None):
+        company = get_object_or_404(self.get_queryset(), slug=slug)
+        return Response({"id": str(company.id)}, status=status.HTTP_200_OK)
 
     @extend_schema(
         parameters=[OpenApiParameter(name="id", required=True, type=OpenApiTypes.UUID, description="Company id")],
