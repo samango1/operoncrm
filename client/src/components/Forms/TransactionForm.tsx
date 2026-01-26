@@ -226,7 +226,7 @@ export default function TransactionForm({
       {error && <div className='text-sm text-red-600'>{error}</div>}
 
       <div className='flex justify-end gap-3'>
-        <ButtonDefault type='button' variant='ghost' onClick={onCancel} disabled={loading}>
+        <ButtonDefault type='button' variant='secondary' onClick={onCancel} disabled={loading}>
           Отмена
         </ButtonDefault>
         <ButtonDefault type='submit' variant='positive' disabled={loading}>
