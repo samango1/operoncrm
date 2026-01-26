@@ -40,6 +40,7 @@ export default function TransactionForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isCompanyLocked = Boolean(defaultCompanyId);
 
   useEffect(() => {
     if (!transaction) return;
@@ -157,13 +158,15 @@ export default function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
-      <SelectOption
-        label='Компания'
-        placeholder='Выберите компанию'
-        options={companyOptions}
-        value={companyId}
-        onChange={(v) => setCompanyId(v as string | undefined)}
-      />
+      {!isCompanyLocked && (
+        <SelectOption
+          label='Компания'
+          placeholder='Выберите компанию'
+          options={companyOptions}
+          value={companyId}
+          onChange={(v) => setCompanyId(v as string | undefined)}
+        />
+      )}
 
       <SelectOption
         label='Клиент (опционально)'

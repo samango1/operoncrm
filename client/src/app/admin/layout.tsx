@@ -1,14 +1,23 @@
 import { CookiesProvider } from 'next-client-cookies/server';
-import SidebarAdmin from '@/components/Layouts/SidebarAdmin';
+import Sidebar from '@/components/Layouts/Sidebar';
+import type { SidebarItem } from '@/components/Layouts/Sidebar';
 import ContainerDefault from '@/components/Containers/ContainerDefault';
 import RoleGuard from '@/components/Guards/RoleGuard';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const items: SidebarItem[] = [
+    { path: '/', label: 'Дашборд', icon: 'home' },
+    { path: '/users', label: 'Пользователи', icon: 'users' },
+    { path: '/companies', label: 'Компании', icon: 'companies' },
+    { path: '/transactions', label: 'Транзакции', icon: 'transactions' },
+    { path: '/clients', label: 'Клиенты', icon: 'clients' },
+  ];
+
   return (
     <CookiesProvider>
       <RoleGuard allowedRoles={['admin']}>
         <div className='flex h-screen'>
-          <SidebarAdmin />
+          <Sidebar items={items} />
 
           <main className='flex-1 overflow-auto pb-20 md:pb-0'>
             <ContainerDefault>{children}</ContainerDefault>

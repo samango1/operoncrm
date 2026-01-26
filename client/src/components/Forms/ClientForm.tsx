@@ -5,7 +5,15 @@ import InputDefault from '@/components/Inputs/InputDefault';
 import SelectOption from '@/components/Inputs/SelectOption';
 import TextAreaDefault from '../Inputs/TextAreaDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
-import { createClient, updateClient, deleteClient, getCompanies } from '@/lib/api';
+import {
+  createClient,
+  updateClient,
+  deleteClient,
+  getCompanies,
+  createCompanyClient,
+  updateCompanyClient,
+  deleteCompanyClient,
+} from '@/lib/api';
 import type { Client, ClientType } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
 import type { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
@@ -14,6 +22,8 @@ type Props = {
   client?: Client | null;
   onCancel: () => void;
   onSuccess: (client: Client) => void | Promise<void>;
+  fixedCompanyId?: string;
+  companiesOverride?: Company[];
 };
 
 const extractCompanyId = (company?: Company | string): string | undefined => {
@@ -22,12 +32,12 @@ const extractCompanyId = (company?: Company | string): string | undefined => {
   return (company as Company).id ? String((company as Company).id) : undefined;
 };
 
-export default function ClientForm({ client, onCancel, onSuccess }: Props) {
+export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId, companiesOverride }: Props) {
   const [name, setName] = useState<string>(client?.name ?? '');
   const [phone, setPhone] = useState<string>(client?.phone ?? '');
   const [description, setDescription] = useState<string>(client?.description ?? '');
   const [type, setType] = useState<'individual' | 'company' | 'group'>(client?.type ?? 'individual');
-  const [companyId, setCompanyId] = useState<string | undefined>(extractCompanyId(client?.company));
+  const [companyId, setCompanyId] = useState<string | undefined>(fixedCompanyId ?? extractCompanyId(client?.company));
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
@@ -40,12 +50,22 @@ export default function ClientForm({ client, onCancel, onSuccess }: Props) {
     setPhone(client?.phone ?? '');
     setDescription(client?.description ?? '');
     setType((client?.type as ClientType) ?? 'individual');
-    setCompanyId(extractCompanyId(client?.company));
-  }, [client]);
+    setCompanyId(fixedCompanyId ?? extractCompanyId(client?.company));
+  }, [client, fixedCompanyId]);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (companiesOverride) {
+        setCompanies(companiesOverride);
+        setLoadingCompanies(false);
+        return;
+      }
+      if (fixedCompanyId) {
+        setCompanies([]);
+        setLoadingCompanies(false);
+        return;
+      }
       setLoadingCompanies(true);
       try {
         const res = await getCompanies({ page: 1, page_size: 100 });
@@ -60,7 +80,7 @@ export default function ClientForm({ client, onCancel, onSuccess }: Props) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [companiesOverride, fixedCompanyId]);
 
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
     value: String(c.id),
@@ -91,7 +111,13 @@ export default function ClientForm({ client, onCancel, onSuccess }: Props) {
       };
 
       let resp: Client;
-      if (client && client.id) {
+      if (fixedCompanyId) {
+        if (client && client.id) {
+          resp = await updateCompanyClient(String(fixedCompanyId), String(client.id), payload);
+        } else {
+          resp = await createCompanyClient(String(fixedCompanyId), payload);
+        }
+      } else if (client && client.id) {
         resp = await updateClient(String(client.id), payload);
       } else {
         resp = await createClient(payload);
@@ -115,7 +141,11 @@ export default function ClientForm({ client, onCancel, onSuccess }: Props) {
     setError(null);
     setSaving(true);
     try {
-      await deleteClient(String(client.id));
+      if (fixedCompanyId) {
+        await deleteCompanyClient(String(fixedCompanyId), String(client.id));
+      } else {
+        await deleteClient(String(client.id));
+      }
       if (onSuccess) {
         onSuccess(client);
       }
@@ -143,15 +173,6 @@ export default function ClientForm({ client, onCancel, onSuccess }: Props) {
         ]}
         value={type}
         onChange={(v) => setType((v as ClientType) ?? 'individual')}
-      />
-
-      <SelectOption
-        label='Прикреплена к компании'
-        placeholder={loadingCompanies ? 'Загрузка компаний...' : 'Выберите компанию'}
-        options={companyOptions}
-        value={companyId}
-        onChange={(v) => setCompanyId(v as string | undefined)}
-        required
       />
 
       <div>
