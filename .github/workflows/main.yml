@@ -36,5 +36,5 @@ jobs:
       - name: Build and deploy
         run: docker compose up -d --force-recreate --build
 
-      - name: Clean up
+      - name: Cleanup
         run: docker system prune -f
