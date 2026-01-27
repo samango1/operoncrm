@@ -45,6 +45,23 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     if (!error.response) return Promise.reject(error);
 
+    if (error.response.status === 403) {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname || '';
+        const areaPrefix = path.startsWith('/admin') ? '/admin' : path.startsWith('/agent') ? '/agent' : '';
+        if (areaPrefix) {
+          window.location.replace(`${areaPrefix}/not-allowed`);
+        } else if (path.startsWith('/tenant/')) {
+          const parts = path.split('/').filter(Boolean);
+          const tenantBase = parts.length >= 2 ? `/${parts[0]}/${parts[1]}` : '/tenant';
+          window.location.replace(`${tenantBase}/not-allowed`);
+        } else {
+          window.location.replace('/not-allowed');
+        }
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
@@ -102,10 +119,6 @@ export const refreshToken = async (payload: RefreshPayload): Promise<AccessToken
 export const getUsers = async (query?: BaseQuery): Promise<PaginatedResponse<User>> => {
   return getPaginated<User>('/users/', query);
 };
-export const getUsersMe = async (): Promise<User> => {
-  const response = await apiClient.get<User>('/users/me/');
-  return response.data;
-};
 export const getUserById = async (id: string, query?: BaseQuery): Promise<User> => {
   const params = cleanParams(query);
   const response = await apiClient.get<User>(`/users/${id}/`, { params });
@@ -127,10 +140,6 @@ export const deleteUser = async (id: string): Promise<User> => {
 // COMPANIES
 export const getCompanies = async (query?: BaseQuery): Promise<PaginatedResponse<Company>> => {
   return getPaginated<Company>('/companies/', query);
-};
-export const getCompaniesMe = async (): Promise<Company[]> => {
-  const response = await apiClient.get<Company[]>('/companies/me/');
-  return response.data;
 };
 export const getCompanyBySlug = async (slug: string, query?: BaseQuery): Promise<Company> => {
   const params = cleanParams(query);

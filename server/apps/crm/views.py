@@ -135,17 +135,15 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "retrieve":
-            perms = [IsAuthenticated(), IsCreatorOrAdmin()]
+            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         elif self.action in ("partial_update", "update"):
             perms = [IsAuthenticated(), IsCreatorOrAdmin()]
         elif self.action == "destroy":
             perms = [IsAuthenticated(), IsAdmin()]
-        elif self.action == "me":
-            perms = [IsAuthenticated()]
         elif self.action == "slug_to_id":
             perms = [IsAuthenticated()]
         elif self.action == "list":
-            perms = [IsAuthenticated(), IsAdminOrAgent()]
+            perms = [IsAuthenticated()]
         elif self.action == "create":
             perms = [IsAuthenticated(), IsAdminOrAgent()]
         else:
@@ -162,48 +160,22 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif getattr(user, "is_agent", False):
             qs = Company.objects.filter(created_by=user).select_related("created_by")
         else:
-            qs = Company.objects.none()
+            qs = self._user_companies_qs(user).select_related("created_by")
 
         qs = apply_search_filter(qs, self.request, ngram_size=3, threshold=0.5)
 
         return qs
 
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        obj_id = self.kwargs.get(lookup_url_kwarg)
+        company = get_object_or_404(Company.objects.select_related("created_by"), pk=obj_id)
+        self._ensure_company_access(self.request.user, company)
+        self.check_object_permissions(self.request, company)
+        return company
+
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-
-    @action(detail=False, methods=["get"], url_path="me")
-    def me(self, request):
-        user = request.user
-        if not user or not user.is_authenticated:
-            raise PermissionDenied("Authentication credentials were not provided.")
-
-        company_qs = Company.objects.filter(memberships__user=user).select_related("created_by").distinct()
-        if not company_qs.exists():
-            qs = Company.objects.all()
-            user_id_str = str(user.id)
-            matching = []
-            for company in qs:
-                members = company.members or []
-                for m in members:
-                    if str(m.get("id")) == user_id_str:
-                        matching.append(company)
-                        break
-
-            page = self.paginate_queryset(matching)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-
-            serializer = self.get_serializer(matching, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        page = self.paginate_queryset(company_qs)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(company_qs, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
         parameters=[OpenApiParameter(name="slug", required=True, type=OpenApiTypes.STR, description="Company slug")],
@@ -211,7 +183,8 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["get"], url_path=r"slug/(?P<slug>[^/.]+)")
     def slug_to_id(self, request, slug=None):
-        company = get_object_or_404(Company.objects.all(), slug=slug)
+        company = get_object_or_404(Company.objects.select_related("created_by"), slug=slug)
+        self._ensure_company_access(request.user, company)
         return Response({"id": str(company.id)}, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -256,16 +229,6 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         company = self.get_object()
         return self._handle_related_detail(request, company, obj_pk=client_id, model=Client, serializer_class=ClientSerializer)
 
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-
-
 class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
     queryset = Client.objects.all().select_related("company", "created_by")
     serializer_class = ClientSerializer
@@ -281,7 +244,7 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif self.action == "destroy":
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         elif self.action == "list":
-            perms = [IsAuthenticated(), IsAdminOrAgent()]
+            perms = [IsAuthenticated()]
         elif self.action == "create":
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         else:
@@ -300,23 +263,21 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif self._is_agent(user):
             qs = base_qs.filter(company__created_by=user)
         else:
-            company_ids = []
-            for c in Company.objects.all():
-                if self._is_member_of_company(user, c):
-                    company_ids.append(c.id)
-
+            company_ids = list(self._user_companies_qs(user).values_list("id", flat=True))
             if not company_ids:
                 return Client.objects.none()
-
             qs = base_qs.filter(company_id__in=company_ids, invalid=False)
 
         qs = apply_search_filter(qs, self.request, ngram_size=3, threshold=0.5)
         return qs
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.check_object_permissions(request, instance)
-        return super().retrieve(request, *args, **kwargs)
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        obj_id = self.kwargs.get(lookup_url_kwarg)
+        instance = get_object_or_404(Client.objects.select_related("company", "created_by"), pk=obj_id)
+        self._ensure_company_access(self.request.user, instance.company)
+        self.check_object_permissions(self.request, instance)
+        return instance
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -325,8 +286,6 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         actor = self.request.user
         instance = serializer.instance
         new_company = serializer.validated_data.get("company", instance.company)
-
-        self.check_object_permissions(self.request, instance)
 
         if not self._is_admin(actor) and not self._is_agent(actor):
             if new_company.id != instance.company.id:
@@ -339,7 +298,6 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        self.check_object_permissions(request, instance)
         instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -359,7 +317,7 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif self.action == "destroy":
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         elif self.action == "list":
-            perms = [IsAuthenticated(), IsAdminOrAgent()]
+            perms = [IsAuthenticated()]
         elif self.action == "create":
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         else:
@@ -378,23 +336,21 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif self._is_agent(user):
             qs = base_qs.filter(company__created_by=user)
         else:
-            company_ids = []
-            for c in Company.objects.all():
-                if self._is_member_of_company(user, c):
-                    company_ids.append(c.id)
-
+            company_ids = list(self._user_companies_qs(user).values_list("id", flat=True))
             if not company_ids:
                 return Transaction.objects.none()
-
             qs = base_qs.filter(company_id__in=company_ids, invalid=False)
 
         qs = apply_search_filter(qs, self.request, ngram_size=3, threshold=0.5)
         return qs
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.check_object_permissions(request, instance)
-        return super().retrieve(request, *args, **kwargs)
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        obj_id = self.kwargs.get(lookup_url_kwarg)
+        instance = get_object_or_404(Transaction.objects.select_related("company", "client"), pk=obj_id)
+        self._ensure_company_access(self.request.user, instance.company)
+        self.check_object_permissions(self.request, instance)
+        return instance
 
     def perform_create(self, serializer):
         serializer.save()
@@ -403,8 +359,6 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         actor = self.request.user
         instance = serializer.instance
         new_company = serializer.validated_data.get("company", instance.company)
-
-        self.check_object_permissions(self.request, instance)
 
         if not self._is_admin(actor) and not self._is_agent(actor):
             if new_company.id != instance.company.id:
@@ -417,6 +371,5 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        self.check_object_permissions(request, instance)
         instance.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

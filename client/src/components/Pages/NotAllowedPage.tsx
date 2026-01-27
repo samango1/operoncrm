@@ -1,10 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 
 export default function NotAllowedPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const areaPrefix = pathname?.startsWith('/admin') ? '/admin' : pathname?.startsWith('/agent') ? '/agent' : '';
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-background px-4'>
@@ -13,7 +15,7 @@ export default function NotAllowedPage() {
 
         <p className='text-lg text-muted-foreground mb-6'>Доступ запрещен.</p>
 
-        <ButtonDefault variant='dark' onClick={() => router.push('/login')}>
+        <ButtonDefault variant='dark' onClick={() => router.push(`${areaPrefix}/login`)}>
           Вернуться
         </ButtonDefault>
       </div>

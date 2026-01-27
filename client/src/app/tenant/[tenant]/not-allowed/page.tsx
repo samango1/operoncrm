@@ -1,5 +1,5 @@
 import NotAllowedPage from '@/components/Pages/NotAllowedPage';
 
-export default function NotAllowed() {
+export default function TenantNotAllowedPage() {
   return <NotAllowedPage />;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { getUsersMe } from '@/lib/api';
+import { decodeJwtPayload } from '@/lib/jwt';
 import type { PlatformRole } from '@/types/api/users';
 
 type GuardStatus = 'loading' | 'allowed';
@@ -28,21 +28,34 @@ export default function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
       };
     }
 
+    const resolveRoleFromToken = (): PlatformRole | null => {
+      if (typeof document === 'undefined') return null;
+      const match = document.cookie.match(/(?:^|; )access=([^;]+)/);
+      const token = match ? decodeURIComponent(match[1]) : null;
+      const payload = decodeJwtPayload(token);
+      if (!payload) return null;
+      const role = payload.platform_role || payload.role;
+      if (role === 'admin' || role === 'agent' || role === 'member') return role;
+      if (payload.is_admin === true) return 'admin';
+      if (payload.is_agent === true) return 'agent';
+      return null;
+    };
+
     const ensureRole = async () => {
-      try {
-        const user = await getUsersMe();
-        if (!active) return;
+      const role = resolveRoleFromToken();
+      if (!active) return;
 
-        if (allowedRoles.includes(user.platform_role)) {
-          setStatus('allowed');
-          return;
-        }
-
-        router.replace('/not-allowed');
-      } catch {
-        if (!active) return;
-        router.replace(`${areaPrefix}/login`);
+      if (role && allowedRoles.includes(role)) {
+        setStatus('allowed');
+        return;
       }
+
+      if (role) {
+        router.replace(`${areaPrefix}/not-allowed`);
+        return;
+      }
+
+      router.replace(`${areaPrefix}/login`);
     };
 
     ensureRole();
