@@ -143,7 +143,7 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif self.action == "me":
             perms = [IsAuthenticated()]
         elif self.action == "slug_to_id":
-            perms = [IsAuthenticated(), IsAdminOrAgent()]
+            perms = [IsAuthenticated()]
         elif self.action == "list":
             perms = [IsAuthenticated(), IsAdminOrAgent()]
         elif self.action == "create":
@@ -211,7 +211,7 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["get"], url_path=r"slug/(?P<slug>[^/.]+)")
     def slug_to_id(self, request, slug=None):
-        company = get_object_or_404(self.get_queryset(), slug=slug)
+        company = get_object_or_404(Company.objects.all(), slug=slug)
         return Response({"id": str(company.id)}, status=status.HTTP_200_OK)
 
     @extend_schema(
