@@ -65,6 +65,9 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
         if not new_company_id:
             return None
 
+        if current_company and str(new_company_id) == str(current_company.id):
+            return None
+
         if not (self._is_admin(actor) or self._is_agent(actor)):
             raise PermissionDenied("Members cannot change company of the resource.")
 
@@ -121,6 +124,7 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
             sel = model.objects.select_related("company", "created_by")
 
         instance = get_object_or_404(sel, pk=obj_pk, company=company)
+        self.check_object_permissions(request, instance)
 
         if request.method == "GET":
             serializer = serializer_class(instance, context={"request": request})
@@ -158,6 +162,8 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "retrieve":
+            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
+        elif self.action in ("transactions", "transaction_detail", "clients", "client_detail"):
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         elif self.action in ("partial_update", "update"):
             perms = [IsAuthenticated(), IsCreatorOrAdmin()]
