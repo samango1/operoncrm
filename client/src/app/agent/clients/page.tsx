@@ -221,7 +221,7 @@ export default function ClientsPage() {
       </section>
 
       <div className='mb-4 flex items-center justify-between gap-4'>
-        <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск клиентов...' />
+        <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по имени, телефону, типу, описанию' />
       </div>
 
       {error && <p className='text-red-600 mb-4'>{error}</p>}

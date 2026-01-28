@@ -2,7 +2,7 @@ from apps.users.models import User
 from apps.users.serializers import UserShallowSerializer
 from rest_framework import serializers
 
-from .models import Company, Transaction, Client
+from .models import Company, Transaction, Client, TransactionCategory
 
 
 class MemberSerializer(serializers.Serializer):
@@ -181,10 +181,79 @@ class ClientSerializer(serializers.ModelSerializer):
         return instance
 
 
+class TransactionCategorySerializer(serializers.ModelSerializer):
+    company = CompanyField(queryset=Company.objects.all())
+    created_by = UserShallowSerializer(read_only=True)
+
+    class Meta:
+        model = TransactionCategory
+        fields = [
+            "id",
+            "name",
+            "company",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["id"] = str(instance.id)
+
+        if instance.company:
+            company_data = ret.get("company")
+            if not company_data:
+                ret["company"] = CompanySerializer(instance.company, context=self.context).data
+                company_data = ret["company"]
+            company_data["id"] = str(instance.company.id)
+
+        if instance.created_by:
+            created_by = ret.get("created_by")
+            if created_by:
+                created_by["id"] = str(instance.created_by.id)
+        return ret
+
+
+class TransactionCategoryField(serializers.PrimaryKeyRelatedField):
+    def to_representation(self, value):
+        if value is None:
+            return None
+
+        if isinstance(value, TransactionCategory):
+            return TransactionCategorySerializer(value, context=self.context).data
+
+        pk = getattr(value, "pk", value)
+
+        try:
+            category = TransactionCategory.objects.get(pk=pk)
+        except TransactionCategory.DoesNotExist:
+            return None
+
+        return TransactionCategorySerializer(category, context=self.context).data
+
+    def to_internal_value(self, data):
+        if data is None:
+            if self.allow_null:
+                return None
+            raise serializers.ValidationError("This field may not be null.")
+
+        if isinstance(data, dict):
+            raise serializers.ValidationError("TransactionCategory must be provided as an id.")
+
+        return super().to_internal_value(data)
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     client = ClientField(queryset=Client.objects.all(), allow_null=True, required=False)
 
     company = CompanyField(queryset=Company.objects.all())
+
+    categories = TransactionCategoryField(
+        queryset=TransactionCategory.objects.all(),
+        many=True,
+        required=False,
+    )
 
     discount = serializers.IntegerField(
         source="discount_amount", write_only=True, required=False, min_value=0
@@ -208,6 +277,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "description",
             "currency",
             "client",
+            "categories",
             "company",
             "invalid",
             "created_at",
@@ -246,6 +316,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         initial = attrs.get("initial_amount", getattr(self.instance, "initial_amount", None))
         discount = attrs.get("discount_amount", getattr(self.instance, "discount_amount", 0))
+        company = attrs.get("company", getattr(self.instance, "company", None))
+        categories = attrs.get("categories", None)
 
         if initial is None:
             raise serializers.ValidationError("initial_amount is required.")
@@ -269,15 +341,29 @@ class TransactionSerializer(serializers.ModelSerializer):
         if currency is None:
             raise serializers.ValidationError({"currency": "currency is required."})
 
+        if categories is not None and company is not None:
+            mismatched = [cat for cat in categories if getattr(cat, "company_id", None) != company.id]
+            if mismatched:
+                raise serializers.ValidationError({"categories": "All categories must belong to the same company as the transaction."})
+
         return attrs
 
     def create(self, validated_data):
+        categories = validated_data.pop("categories", [])
         transaction = Transaction.objects.create(**validated_data)
+        if categories:
+            transaction.categories.set(categories)
         return transaction
 
     def update(self, instance, validated_data):
+        categories = validated_data.pop("categories", None)
+        new_company = validated_data.get("company", instance.company)
+        if categories is None and new_company and new_company.id != instance.company_id:
+            instance.categories.clear()
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.full_clean()
         instance.save()
+        if categories is not None:
+            instance.categories.set(categories)
         return instance

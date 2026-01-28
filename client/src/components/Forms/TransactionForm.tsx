@@ -4,11 +4,12 @@ import React, { useEffect, useState } from 'react';
 import InputDefault from '@/components/Inputs/InputDefault';
 import TextAreaDefault from '../Inputs/TextAreaDefault';
 import SelectOption, { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
+import SelectMultiple from '@/components/Inputs/SelectMultiple';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Company } from '@/types/api/companies';
-import type { Transaction } from '@/types/api/transactions';
+import type { Transaction, TransactionCategory } from '@/types/api/transactions';
 import type { Client } from '@/types/api/clients';
-import { createTransaction, updateTransaction } from '@/lib/api';
+import { createTransaction, updateTransaction, getCompanyTransactionCategories } from '@/lib/api';
 
 type Props = {
   companies: Company[];
@@ -37,10 +38,20 @@ export default function TransactionForm({
   const [currency, setCurrency] = useState<'UZS' | 'USD'>('UZS');
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState<string>('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [categories, setCategories] = useState<TransactionCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCompanyLocked = Boolean(defaultCompanyId);
+
+  const extractCategoryIds = (value?: Transaction['categories']): string[] => {
+    if (!value) return [];
+    return (value as Array<TransactionCategory | string>)
+      .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
+      .filter((id) => id);
+  };
 
   useEffect(() => {
     if (!transaction) return;
@@ -61,6 +72,7 @@ export default function TransactionForm({
     setCurrency(transaction.currency ?? 'UZS');
     setDate((transaction.date ?? transaction.created_at ?? new Date().toISOString()).slice(0, 10));
     setDescription(transaction.description ?? '');
+    setCategoryIds(extractCategoryIds(transaction.categories));
   }, [transaction]);
 
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
@@ -83,6 +95,37 @@ export default function TransactionForm({
     value: String(c.id),
     label: c.name ? `${c.name}${c.phone ? ` (${c.phone})` : ''}` : String(c.id),
   }));
+
+  const fetchCategories = async (company: string) => {
+    setCategoriesLoading(true);
+    try {
+      const res = await getCompanyTransactionCategories(company, { page: 1, page_size: 1000 });
+      setCategories((res.results ?? res) as TransactionCategory[]);
+    } catch (err) {
+      console.error('fetchCategories error:', err);
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!companyId) {
+      setCategories([]);
+      setCategoryIds([]);
+      return;
+    }
+    fetchCategories(companyId);
+  }, [companyId]);
+
+  useEffect(() => {
+    if (categories.length === 0 || categoryIds.length === 0) return;
+    const validIds = new Set(categories.map((c) => String(c.id)));
+    const next = categoryIds.filter((id) => validIds.has(String(id)));
+    if (next.length !== categoryIds.length) {
+      setCategoryIds(next);
+    }
+  }, [categories, categoryIds]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -130,6 +173,7 @@ export default function TransactionForm({
       description: description || undefined,
       company: companyId,
       client: clientId || undefined,
+      categories: categoryIds,
     };
 
     try {
@@ -140,8 +184,12 @@ export default function TransactionForm({
       } else {
         resp = await createTransaction(payload);
       }
-      await onSuccess(resp);
       onCancel();
+      try {
+        await onSuccess(resp);
+      } catch (callbackError) {
+        console.error('onSuccess callback error:', callbackError);
+      }
     } catch (err) {
       console.error('saveTransaction error:', err);
       setError('Ошибка при сохранении транзакции');
@@ -155,6 +203,19 @@ export default function TransactionForm({
     : filteredClients.length === 0
       ? 'Клиенты для компании не найдены'
       : 'Выберите клиента';
+
+  const categoryPlaceholder = !companyId
+    ? 'Сначала выберите компанию'
+    : categoriesLoading
+      ? 'Загрузка категорий...'
+      : categories.length === 0
+        ? 'Категории для компании не найдены'
+        : 'Выберите категорию';
+
+  const categoryOptions: OptionType<string>[] = categories.map((c) => ({
+    value: String(c.id),
+    label: c.name ?? String(c.id),
+  }));
 
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
@@ -174,6 +235,15 @@ export default function TransactionForm({
         options={clientOptions}
         value={clientId}
         onChange={(v) => setClientId(v as string | undefined)}
+      />
+
+      <SelectMultiple
+        label='Категории (опционально)'
+        placeholder={categoryPlaceholder}
+        options={categoryOptions}
+        value={categoryIds}
+        onChange={(vals) => setCategoryIds(vals as string[])}
+        disabled={!companyId || categoriesLoading}
       />
 
       <div className='flex gap-3'>

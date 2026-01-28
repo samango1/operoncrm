@@ -208,7 +208,7 @@ export default function CompaniesPage() {
       </section>
 
       <div className='mb-4 flex items-center justify-between gap-4'>
-        <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск компаний...' />
+        <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по названию, slug, плану' />
       </div>
 
       {error && <p className='text-red-600 mb-4'>{error}</p>}

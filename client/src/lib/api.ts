@@ -5,7 +5,7 @@ import { PaginatedResponse } from '@/types/api/pagination';
 import { BaseQuery } from '@/types/api/common';
 import { User } from '@/types/api/users';
 import { Company } from '@/types/api/companies';
-import { Transaction } from '@/types/api/transactions';
+import { Transaction, TransactionCategory } from '@/types/api/transactions';
 import { Client } from '@/types/api/clients';
 
 const apiClient = axios.create({
@@ -210,6 +210,43 @@ export const deleteCompanyClient = async (companyId: string, clientId: string): 
   return response.data;
 };
 
+// COMPANIES TRANSACTION CATEGORIES
+export const getCompanyTransactionCategories = async (
+  companyId: string,
+  query?: BaseQuery
+): Promise<PaginatedResponse<TransactionCategory>> => {
+  return getPaginated<TransactionCategory>(`/companies/${companyId}/transaction-categories/`, query);
+};
+export const createCompanyTransactionCategory = async (
+  companyId: string,
+  payload: Partial<TransactionCategory>
+): Promise<TransactionCategory> => {
+  const response = await apiClient.post<TransactionCategory>(`/companies/${companyId}/transaction-categories/`, payload);
+  return response.data;
+};
+export const getCompanyTransactionCategoryById = async (
+  companyId: string,
+  categoryId: string
+): Promise<TransactionCategory> => {
+  const response = await apiClient.get<TransactionCategory>(`/companies/${companyId}/transaction-categories/${categoryId}/`);
+  return response.data;
+};
+export const updateCompanyTransactionCategory = async (
+  companyId: string,
+  categoryId: string,
+  payload: Partial<TransactionCategory>
+): Promise<TransactionCategory> => {
+  const response = await apiClient.patch<TransactionCategory>(
+    `/companies/${companyId}/transaction-categories/${categoryId}/`,
+    payload
+  );
+  return response.data;
+};
+export const deleteCompanyTransactionCategory = async (companyId: string, categoryId: string): Promise<TransactionCategory> => {
+  const response = await apiClient.delete<TransactionCategory>(`/companies/${companyId}/transaction-categories/${categoryId}/`);
+  return response.data;
+};
+
 // TRANSACTIONS
 export const getTransactions = async (query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
   return getPaginated<Transaction>('/transactions/', query);
@@ -229,6 +266,31 @@ export const updateTransaction = async (id: string, payload: Partial<Transaction
 };
 export const deleteTransaction = async (id: string): Promise<Transaction> => {
   const response = await apiClient.delete<Transaction>(`/transactions/${id}/`);
+  return response.data;
+};
+
+// TRANSACTION CATEGORIES
+export const getTransactionCategories = async (query?: BaseQuery): Promise<PaginatedResponse<TransactionCategory>> => {
+  return getPaginated<TransactionCategory>('/transaction-categories/', query);
+};
+export const getTransactionCategoryById = async (id: string, query?: BaseQuery): Promise<TransactionCategory> => {
+  const params = cleanParams(query);
+  const response = await apiClient.get<TransactionCategory>(`/transaction-categories/${id}/`, { params });
+  return response.data;
+};
+export const createTransactionCategory = async (payload: Partial<TransactionCategory>): Promise<TransactionCategory> => {
+  const response = await apiClient.post<TransactionCategory>('/transaction-categories/', payload);
+  return response.data;
+};
+export const updateTransactionCategory = async (
+  id: string,
+  payload: Partial<TransactionCategory>
+): Promise<TransactionCategory> => {
+  const response = await apiClient.patch<TransactionCategory>(`/transaction-categories/${id}/`, payload);
+  return response.data;
+};
+export const deleteTransactionCategory = async (id: string): Promise<TransactionCategory> => {
+  const response = await apiClient.delete<TransactionCategory>(`/transaction-categories/${id}/`);
   return response.data;
 };
 

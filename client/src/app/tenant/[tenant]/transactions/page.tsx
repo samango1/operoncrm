@@ -132,6 +132,17 @@ export default function TenantTransactionsPage() {
     return String(raw);
   };
 
+  const formatCategoryNames = (cats?: Transaction['categories']) => {
+    if (!cats || cats.length === 0) return '';
+    return (cats as Array<string | { id?: string; name?: string }>)
+      .map((c) => {
+        if (typeof c === 'string') return c;
+        return c.name ?? String(c.id ?? '');
+      })
+      .filter(Boolean)
+      .join(', ');
+  };
+
   const openViewModal = async (txId: string) => {
     if (!companyId) return;
     setIsModalOpen(true);
@@ -288,7 +299,11 @@ export default function TenantTransactionsPage() {
 
       <div className='mb-4'>
         {companyId && (
-          <SearchInput initialValue={globalSearch} onSearch={handleSearch} placeholder='Поиск по описанию, клиенту...' />
+          <SearchInput
+            initialValue={globalSearch}
+            onSearch={handleSearch}
+            placeholder='Поиск по описанию, типу, методу, валюте, суммам, категориям'
+          />
         )}
       </div>
 
@@ -390,6 +405,9 @@ export default function TenantTransactionsPage() {
                           (selectedTransaction.client as Client).phone ??
                           String((selectedTransaction.client as Client).id))
                       : ''}
+                  </div>
+                  <div>
+                    <strong>Категории:</strong> {formatCategoryNames(selectedTransaction.categories)}
                   </div>
                   <div>
                     <strong>Компания:</strong>{' '}

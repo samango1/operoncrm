@@ -10,6 +10,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
     { path: '/users', label: 'Пользователи', icon: 'users' },
     { path: '/companies', label: 'Компании', icon: 'companies' },
     { path: '/transactions', label: 'Транзакции', icon: 'transactions' },
+    { path: '/transaction-categories', label: 'Категории', icon: 'categories' },
     { path: '/clients', label: 'Клиенты', icon: 'clients' },
   ];
 

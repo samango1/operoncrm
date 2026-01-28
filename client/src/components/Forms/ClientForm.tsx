@@ -14,11 +14,7 @@ import {
   updateCompanyClient,
   deleteCompanyClient,
 } from '@/lib/api';
-import { 
-  formatLocalPhone, 
-  isLocalPhoneComplete, 
-  toFullPhoneNumber 
-} from '@/lib/phone';
+import { formatLocalPhone, isLocalPhoneComplete, toFullPhoneNumber } from '@/lib/phone';
 import type { Client, ClientType } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
 import type { SelectOption as OptionType } from '@/components/Inputs/SelectOption';

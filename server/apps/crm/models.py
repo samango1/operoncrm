@@ -133,6 +133,33 @@ class Client(models.Model):
             self.save(update_fields=["invalid", "updated_at"])
 
 
+class TransactionCategory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    company = models.ForeignKey(
+        Company,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE,
+        related_name="transaction_categories",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_transaction_categories",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.id})"
+
+
 class Transaction(models.Model):
     TYPE_INCOME = "income"
     TYPE_OUTCOME = "outcome"
@@ -169,6 +196,11 @@ class Transaction(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+        related_name="transactions",
+    )
+    categories = models.ManyToManyField(
+        TransactionCategory,
+        blank=True,
         related_name="transactions",
     )
     company = models.ForeignKey(

@@ -1,11 +1,11 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Users, Building2, Banknote, Contact, Settings, type LucideIcon } from 'lucide-react';
+import { Home, Users, Building2, Banknote, Contact, Settings, Tag, type LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
-export type SidebarIconKey = 'home' | 'users' | 'companies' | 'transactions' | 'clients' | 'settings';
+export type SidebarIconKey = 'home' | 'users' | 'companies' | 'transactions' | 'clients' | 'categories' | 'settings';
 
 export type SidebarItem = {
   path: string;
@@ -24,6 +24,7 @@ const iconMap: Record<SidebarIconKey, LucideIcon> = {
   companies: Building2,
   transactions: Banknote,
   clients: Contact,
+  categories: Tag,
   settings: Settings,
 };
 

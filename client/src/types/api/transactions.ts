@@ -5,6 +5,15 @@ export type TransactionType = 'income' | 'outcome';
 export type TransactionMethod = 'cash' | 'card';
 export type TransactionCurrency = 'USD' | 'UZS';
 
+export interface TransactionCategory {
+  id: string;
+  name: string;
+  company: Company | string;
+  created_by?: string | { id: string; name?: string; phone?: string };
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Transaction {
   id: string;
   initial_amount: number;
@@ -16,6 +25,7 @@ export interface Transaction {
   description?: string;
   currency: TransactionCurrency;
   client?: Client | string;
+  categories?: TransactionCategory[] | string[];
   company: Company | string;
   created_at?: string;
   updated_at?: string;

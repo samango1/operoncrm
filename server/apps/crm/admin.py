@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Company, Transaction, Client, CompanyMember
+from .models import Company, Transaction, Client, CompanyMember, TransactionCategory
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -27,3 +27,9 @@ class TransactionAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "amount", "created_at", "updated_at")
     search_fields = ("id", "company__name", "company__slug")
     list_filter = ("type", "method", "currency", "date", "invalid")
+
+@admin.register(TransactionCategory)
+class TransactionCategoryAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "company", "created_by", "created_at")
+    readonly_fields = ("id", "created_at", "updated_at")
+    search_fields = ("name", "company__name", "company__slug")
