@@ -1,3 +1,4 @@
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -46,7 +47,13 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
             qs = qs.prefetch_related("categories", "categories__company", "categories__created_by")
 
         if hide_invalid_for_members and not (self._is_admin(user) or self._is_agent_owner_of_company(user, company)):
-            qs = qs.filter(invalid=False)
+            try:
+                if model is not None:
+                    model._meta.get_field("valid")
+            except FieldDoesNotExist:
+                pass
+            else:
+                qs = qs.filter(valid=True)
         return qs
 
     def _validate_company_change(self, actor, current_company, new_company_raw):
@@ -355,7 +362,7 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
             company_ids = list(self._user_companies_qs(user).values_list("id", flat=True))
             if not company_ids:
                 return Client.objects.none()
-            qs = base_qs.filter(company_id__in=company_ids, invalid=False)
+            qs = base_qs.filter(company_id__in=company_ids, valid=True)
 
         qs = apply_search_filter(qs, self.request, ngram_size=3, threshold=0.5)
         return qs
@@ -436,7 +443,7 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
             company_ids = list(self._user_companies_qs(user).values_list("id", flat=True))
             if not company_ids:
                 return Transaction.objects.none()
-            qs = base_qs.filter(company_id__in=company_ids, invalid=False)
+            qs = base_qs.filter(company_id__in=company_ids, valid=True)
 
         role_qs = qs
         qs = apply_search_filter(role_qs, self.request, ngram_size=3, threshold=0.5)

@@ -148,11 +148,11 @@ class ClientSerializer(serializers.ModelSerializer):
             "description",
             "company",
             "created_by",
-            "invalid",
+            "valid",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_by", "created_at", "updated_at", "invalid"]
+        read_only_fields = ["id", "created_by", "created_at", "updated_at", "valid"]
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -261,7 +261,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     amount = serializers.IntegerField(read_only=True)
 
-    invalid = serializers.BooleanField(read_only=True)
+    valid = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Transaction
@@ -279,11 +279,11 @@ class TransactionSerializer(serializers.ModelSerializer):
             "client",
             "categories",
             "company",
-            "invalid",
+            "valid",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "amount", "created_at", "updated_at", "discount_amount", "invalid"]
+        read_only_fields = ["id", "amount", "created_at", "updated_at", "discount_amount", "valid"]
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)

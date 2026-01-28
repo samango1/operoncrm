@@ -116,7 +116,7 @@ class Client(models.Model):
         on_delete=models.SET_NULL,
         related_name="created_clients",
     )
-    invalid = models.BooleanField(default=False)
+    valid = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -128,9 +128,9 @@ class Client(models.Model):
         return f"{self.name} ({self.id})"
 
     def soft_delete(self):
-        if not self.invalid:
-            self.invalid = True
-            self.save(update_fields=["invalid", "updated_at"])
+        if self.valid:
+            self.valid = False
+            self.save(update_fields=["valid", "updated_at"])
 
 
 class TransactionCategory(models.Model):
@@ -210,7 +210,7 @@ class Transaction(models.Model):
         on_delete=models.CASCADE,
         related_name="transactions",
     )
-    invalid = models.BooleanField(default=False)
+    valid = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -235,9 +235,9 @@ class Transaction(models.Model):
         super().save(*args, **kwargs)
 
     def soft_delete(self):
-        if not self.invalid:
-            self.invalid = True
-            self.save(update_fields=["invalid", "updated_at"])
+        if self.valid:
+            self.valid = False
+            self.save(update_fields=["valid", "updated_at"])
 
     def __str__(self):
         return f"Transaction {self.id} ({self.type}) — {self.amount} {self.currency}"

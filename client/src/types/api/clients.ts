@@ -11,7 +11,7 @@ export interface Client {
   description?: string;
   company?: Company | string;
   created_by?: User;
-  invalid?: boolean;
+  valid?: boolean;
   created_at?: string;
   updated_at?: string;
 }

@@ -434,7 +434,7 @@ export default function TransactionsPage() {
                     <strong>Обновлен:</strong> {selectedTransaction.updated_at ?? ''}
                   </div>
                   <div>
-                    <strong>Недействительная:</strong> {selectedTransaction.invalid ? 'Да' : 'Нет'}
+                    <strong>Действительная:</strong> {selectedTransaction.valid ? 'Да' : 'Нет'}
                   </div>
                 </div>
               )}

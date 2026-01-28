@@ -29,5 +29,5 @@ export interface Transaction {
   company: Company | string;
   created_at?: string;
   updated_at?: string;
-  invalid?: boolean;
+  valid?: boolean;
 }

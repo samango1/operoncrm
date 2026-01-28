@@ -91,7 +91,7 @@ class IsMemberOrCreatedBy(BasePermission):
             return self._is_member_or_owner(user, obj)
 
         company = getattr(obj, "company", None)
-        if getattr(obj, "invalid", False):
+        if getattr(obj, "valid", True) is False:
             return company is not None and company.created_by_id == user.id
 
         return self._is_member_or_owner(user, company)

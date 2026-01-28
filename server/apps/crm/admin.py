@@ -16,17 +16,17 @@ class CompanyMemberAdmin(admin.ModelAdmin):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "type", "phone", "company", "invalid", "created_at")
+    list_display = ("id", "name", "type", "phone", "company", "valid", "created_at")
     readonly_fields = ("id", "created_at", "updated_at", "created_by")
     search_fields = ("name", "company__name", "company__slug")
-    list_filter = ("type", "invalid")
+    list_filter = ("type", "valid")
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ("id", "company", "type", "method", "amount", "currency", "date", "invalid", "created_at")
+    list_display = ("id", "company", "type", "method", "amount", "currency", "date", "valid", "created_at")
     readonly_fields = ("id", "amount", "created_at", "updated_at")
     search_fields = ("id", "company__name", "company__slug")
-    list_filter = ("type", "method", "currency", "date", "invalid")
+    list_filter = ("type", "method", "currency", "date", "valid")
 
 @admin.register(TransactionCategory)
 class TransactionCategoryAdmin(admin.ModelAdmin):
