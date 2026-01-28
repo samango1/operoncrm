@@ -40,6 +40,12 @@ class IsMemberOrCreatedBy(BasePermission):
             return True
         if company.created_by_id == user.id:
             return True
+        CompanyMember = apps.get_model("crm", "CompanyMember")
+        try:
+            if CompanyMember.objects.filter(company=company, user=user).exists():
+                return True
+        except Exception:
+            pass
         members = company.members or []
         user_id_str = str(user.id)
         for m in members:
