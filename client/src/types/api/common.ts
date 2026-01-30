@@ -5,6 +5,7 @@ export interface BaseQuery {
   page_size?: number;
   deep?: boolean;
   search?: string;
+  valid?: boolean;
 }
 
 export interface Error {

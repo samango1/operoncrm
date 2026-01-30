@@ -8,6 +8,7 @@ interface CardTableItemProps<T> {
   rowIndex: number;
   onCellClick?: (row: T, key: keyof T | string, value: any, rowIndex: number, colIndex: number) => void;
   onRowClick?: (row: T, rowIndex: number) => void;
+  rowClassName?: string;
 }
 
 export default function CardTableItem<T extends Record<string, any>>({
@@ -16,6 +17,7 @@ export default function CardTableItem<T extends Record<string, any>>({
   rowIndex,
   onCellClick,
   onRowClick,
+  rowClassName,
 }: CardTableItemProps<T>) {
   const renderCellContent = (col: Column<T>, colIndex: number) => {
     const rawValue = (row as any)[col.key];
@@ -30,7 +32,11 @@ export default function CardTableItem<T extends Record<string, any>>({
 
   return (
     <div
-      className={clsx('rounded-xl border border-gray-200 bg-white p-3 shadow-sm space-y-3', onRowClick && 'cursor-pointer')}
+      className={clsx(
+        'rounded-xl border border-gray-200 p-3 shadow-sm space-y-3',
+        onRowClick && 'cursor-pointer',
+        rowClassName ?? 'bg-white'
+      )}
       onClick={() => onRowClick?.(row, rowIndex)}
     >
       {columns.map((col, cIdx) => {

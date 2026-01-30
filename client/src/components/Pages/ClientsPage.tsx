@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getClients, getClientById } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
+import { getPlatformRoleFromCookie } from '@/lib/role';
 import type { Client } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
+import type { PlatformRole } from '@/types/api/users';
 
 import Pagination from '@/components/Layouts/Pagination';
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
@@ -12,8 +14,9 @@ import ClientForm from '@/components/Forms/ClientForm';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
+import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 
-import { Pencil, Eye } from 'lucide-react';
+import { Pencil, Eye, Funnel } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export default function ClientsPage() {
@@ -25,32 +28,49 @@ export default function ClientsPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [search, setSearch] = useState<string>('');
+  const [validOnly, setValidOnly] = useState<boolean | null>(null);
+  const [role, setRole] = useState<PlatformRole | null>(null);
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    const resolvedRole = getPlatformRoleFromCookie();
+    setRole(resolvedRole);
+  }, []);
+
+  useEffect(() => {
     const s = searchParams?.get('search') ?? '';
     const p = parseInt(searchParams?.get('page') ?? '', 10) || 1;
     const ps = parseInt(searchParams?.get('page_size') ?? '', 10) || 10;
+    const vRaw = searchParams?.get('valid');
+    const vParsed = vRaw === 'true' ? true : vRaw === 'false' ? false : null;
 
     setSearch(s);
     setCurrentPage(p);
     setPageSize(ps);
-  }, [searchParams?.toString()]);
+    if (role === 'member') {
+      setValidOnly(null);
+    } else {
+      setValidOnly(vParsed ?? true);
+    }
+  }, [searchParams?.toString(), role]);
 
-  const fetchClients = async (page = currentPage, ps = pageSize, q = search) => {
+  const showValidSwitch = useMemo(() => role === 'admin' || role === 'agent', [role]);
+
+  const fetchClients = async (page = currentPage, ps = pageSize, q = search, valid = validOnly) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getClients({ page, page_size: ps, search: q });
+      const res = await getClients({ page, page_size: ps, search: q, valid: valid ?? undefined });
       setClients(res.results);
       setCount(res.count);
     } catch (err) {
@@ -63,7 +83,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [currentPage, pageSize, search]);
+  }, [currentPage, pageSize, search, validOnly]);
 
   const openViewModal = async (clientId: string) => {
     setIsModalOpen(true);
@@ -171,7 +191,7 @@ export default function ClientsPage() {
     updateUrl({ page, page_size: pageSize, search });
   };
 
-  const updateUrl = (opts: { page?: number; page_size?: number; search?: string }) => {
+  const updateUrl = (opts: { page?: number; page_size?: number; search?: string; valid?: boolean | null }) => {
     try {
       const params = new URLSearchParams(window.location.search);
 
@@ -193,6 +213,14 @@ export default function ClientsPage() {
         params.delete('page_size');
       }
 
+      if (opts.valid === true) {
+        params.set('valid', 'true');
+      } else if (opts.valid === false) {
+        params.set('valid', 'false');
+      } else {
+        params.delete('valid');
+      }
+
       const qs = params.toString();
       router.push(qs ? `${pathname}?${qs}` : `${pathname}`);
     } catch (e) {
@@ -203,7 +231,7 @@ export default function ClientsPage() {
   const handleSearch = (q: string) => {
     setSearch(q);
     setCurrentPage(1);
-    updateUrl({ page: 1, page_size: pageSize, search: q });
+    updateUrl({ page: 1, page_size: pageSize, search: q, valid: validOnly });
   };
 
   return (
@@ -222,7 +250,33 @@ export default function ClientsPage() {
 
       <div className='mb-4 flex items-center justify-between gap-4'>
         <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по имени, телефону, типу, описанию' />
+        <ButtonDefault
+          type='button'
+          onClick={() => setShowFilters((v) => !v)}
+          aria-label='Показать фильтры'
+          variant={showFilters ? 'positive' : 'outline'}
+        >
+          <Funnel />
+        </ButtonDefault>
       </div>
+
+      {showFilters && (
+        <div className='mb-4 rounded-lg border border-gray-200 bg-white/60 p-3'>
+          {showValidSwitch && validOnly !== null && (
+            <ToggleSwitch
+              checked={validOnly}
+              onChange={(next) => {
+                setValidOnly(next);
+                setCurrentPage(1);
+                updateUrl({ page: 1, page_size: pageSize, search, valid: next });
+              }}
+              label='Показывать'
+              onLabel='Валидные'
+              offLabel='Невалидные'
+            />
+          )}
+        </div>
+      )}
 
       {error && <p className='text-red-600 mb-4'>{error}</p>}
 
@@ -230,7 +284,12 @@ export default function ClientsPage() {
         {loading ? (
           <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
         ) : (
-          <TableDefault<Client> columns={columns} data={clients} className='bg-transparent' />
+          <TableDefault<Client>
+            columns={columns}
+            data={clients}
+            className='bg-transparent'
+            rowClassName={validOnly === false ? 'bg-red-100 hover:bg-red-200' : undefined}
+          />
         )}
       </div>
 

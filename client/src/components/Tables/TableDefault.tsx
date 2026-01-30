@@ -16,6 +16,7 @@ interface TableDefaultProps<T> {
   className?: string;
   onCellClick?: (row: T, key: keyof T | string, value: any, rowIndex: number, colIndex: number) => void;
   onRowClick?: (row: T, rowIndex: number) => void;
+  rowClassName?: string | ((row: T, rowIndex: number) => string);
 }
 
 export default function TableDefault<T extends Record<string, any>>({
@@ -24,6 +25,7 @@ export default function TableDefault<T extends Record<string, any>>({
   className,
   onCellClick,
   onRowClick,
+  rowClassName,
 }: TableDefaultProps<T>) {
   const renderCellContent = (row: T, col: Column<T>, rIdx: number, cIdx: number) => {
     const rawValue = (row as any)[col.key];
@@ -52,7 +54,10 @@ export default function TableDefault<T extends Record<string, any>>({
             {data.map((row, rIdx) => (
               <tr
                 key={rIdx}
-                className='hover:bg-gray-100 transition-colors duration-200 cursor-default'
+                className={clsx(
+                  'hover:bg-gray-100 transition-colors duration-200 cursor-default',
+                  typeof rowClassName === 'function' ? rowClassName(row, rIdx) : rowClassName
+                )}
                 onClick={() => onRowClick?.(row, rIdx)}
               >
                 {columns.map((col, cIdx) => {
@@ -112,6 +117,7 @@ export default function TableDefault<T extends Record<string, any>>({
             rowIndex={rIdx}
             onCellClick={onCellClick}
             onRowClick={onRowClick}
+            rowClassName={typeof rowClassName === 'function' ? rowClassName(row, rIdx) : rowClassName}
           />
         ))}
       </div>

@@ -4,9 +4,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Transaction } from '@/types/api/transactions';
 import type { Company } from '@/types/api/companies';
 import type { Client } from '@/types/api/clients';
+import type { PlatformRole } from '@/types/api/users';
 
 import { getCompanies, getCompanyTransactions, getClients, getCompanyTransactionById } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
+import { getPlatformRoleFromCookie } from '@/lib/role';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
@@ -15,8 +17,9 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
 import SelectOption from '@/components/Inputs/SelectOption';
 import TransactionForm from '@/components/Forms/TransactionForm';
+import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 
-import { Pencil, Eye } from 'lucide-react';
+import { Pencil, Eye, Funnel } from 'lucide-react';
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -30,6 +33,8 @@ export default function TransactionsPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
+  const [validOnly, setValidOnly] = useState<boolean | null>(null);
+  const [role, setRole] = useState<PlatformRole | null>(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -38,6 +43,7 @@ export default function TransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchCompanies = async () => {
     try {
@@ -58,7 +64,13 @@ export default function TransactionsPage() {
     }
   };
 
-  const fetchTransactions = async (companyId: string, page = currentPage, ps = pageSize, search = globalSearch) => {
+  const fetchTransactions = async (
+    companyId: string,
+    page = currentPage,
+    ps = pageSize,
+    search = globalSearch,
+    valid = validOnly
+  ) => {
     if (!companyId) {
       setTransactions([]);
       setTotalCount(0);
@@ -68,7 +80,7 @@ export default function TransactionsPage() {
     setLoading(true);
     setError(null);
     try {
-      const txRes = await getCompanyTransactions(companyId, { page, page_size: ps, search });
+      const txRes = await getCompanyTransactions(companyId, { page, page_size: ps, search, valid: valid ?? undefined });
       setTransactions(txRes.results as Transaction[]);
       setTotalCount(txRes.count);
     } catch (err) {
@@ -85,13 +97,28 @@ export default function TransactionsPage() {
   }, []);
 
   useEffect(() => {
+    const resolvedRole = getPlatformRoleFromCookie();
+    setRole(resolvedRole);
+  }, []);
+
+  useEffect(() => {
+    if (role === 'member') {
+      setValidOnly(null);
+      return;
+    }
+    if (role) {
+      setValidOnly((prev) => (prev === null ? true : prev));
+    }
+  }, [role]);
+
+  useEffect(() => {
     if (selectedCompanyId) {
-      fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch);
+      fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch, validOnly);
     } else {
       setTransactions([]);
       setTotalCount(0);
     }
-  }, [selectedCompanyId, currentPage, pageSize, globalSearch]);
+  }, [selectedCompanyId, currentPage, pageSize, globalSearch, validOnly]);
 
   const selectedCompany = useMemo(() => {
     if (!selectedCompanyId) return undefined;
@@ -299,11 +326,39 @@ export default function TransactionsPage() {
         </div>
 
         {selectedCompanyId && (
-          <SearchInput
-            initialValue={globalSearch}
-            onSearch={handleSearch}
-            placeholder='Поиск по описанию, типу, методу, валюте, суммам, категориям'
-          />
+          <>
+            <div className='flex items-center justify-between gap-4'>
+              <SearchInput
+                initialValue={globalSearch}
+                onSearch={handleSearch}
+                placeholder='Поиск по описанию, типу, методу, валюте, суммам, категориям'
+              />
+              <ButtonDefault
+                type='button'
+                onClick={() => setShowFilters((v) => !v)}
+                aria-label='Показать фильтры'
+                variant={showFilters ? 'positive' : 'outline'}
+              >
+                <Funnel />
+              </ButtonDefault>
+            </div>
+            {showFilters && (
+              <div className='rounded-lg border border-gray-200 bg-white/60 p-3'>
+                {(role === 'admin' || role === 'agent') && validOnly !== null && (
+                  <ToggleSwitch
+                    checked={validOnly}
+                    onChange={(next) => {
+                      setValidOnly(next);
+                      setCurrentPage(1);
+                    }}
+                    label='Показывать'
+                    onLabel='Валидные'
+                    offLabel='Невалидные'
+                  />
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -326,7 +381,12 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          <TableDefault<Transaction> columns={columns} data={transactions} className='bg-transparent' />
+          <TableDefault<Transaction>
+            columns={columns}
+            data={transactions}
+            className='bg-transparent'
+            rowClassName={validOnly === false ? 'bg-red-100 hover:bg-red-200' : undefined}
+          />
 
           <div className='mt-3'>
             <Pagination currentPage={currentPage} pageSize={pageSize} total={totalCount} onPageChange={handlePageChange} />

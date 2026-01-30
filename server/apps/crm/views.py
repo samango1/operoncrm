@@ -16,6 +16,31 @@ from .serializers import CompanySerializer, TransactionSerializer, ClientSeriali
 
 
 class CompanyAccessMixinLocal(CompanyAccessMixin):
+    def _get_valid_param(self, request):
+        raw = request.query_params.get("valid")
+        if raw is None:
+            return None
+        if isinstance(raw, str):
+            val = raw.strip().lower()
+            if val in ("true", "1", "yes"):
+                return True
+            if val in ("false", "0", "no"):
+                return False
+        return None
+
+    def _apply_valid_filter(self, qs, request):
+        valid_value = self._get_valid_param(request)
+        if valid_value is None:
+            return qs
+        model = getattr(qs, "model", None)
+        if model is None:
+            return qs
+        try:
+            model._meta.get_field("valid")
+        except FieldDoesNotExist:
+            return qs
+        return qs.filter(valid=valid_value)
+
     def _ensure_company_access(self, user, company):
         if self._is_admin(user) or self._is_agent_owner_of_company(user, company) or self._is_member_of_company(user, company):
             return
@@ -88,6 +113,7 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
 
         if request.method == "GET":
             base_qs = self._qs_for_related(company, rel_name, user)
+            base_qs = self._apply_valid_filter(base_qs, request)
             qs = apply_search_filter(base_qs, request, ngram_size=3, threshold=0.5)
             if rel_name == "transactions":
                 q = request.query_params.get("search")
@@ -370,6 +396,7 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
                 return Client.objects.none()
             qs = base_qs.filter(company_id__in=company_ids, valid=True)
 
+        qs = self._apply_valid_filter(qs, self.request)
         qs = apply_search_filter(qs, self.request, ngram_size=3, threshold=0.5)
         return qs
 
@@ -451,6 +478,7 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
                 return Transaction.objects.none()
             qs = base_qs.filter(company_id__in=company_ids, valid=True)
 
+        qs = self._apply_valid_filter(qs, self.request)
         role_qs = qs
         qs = apply_search_filter(role_qs, self.request, ngram_size=3, threshold=0.5)
         q = self.request.query_params.get("search")
