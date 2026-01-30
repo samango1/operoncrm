@@ -208,6 +208,7 @@ export default function ProductsPage() {
   };
 
   const onCreated = async () => {
+    closeCreate();
     if (selectedCompanyId) await fetchProducts(selectedCompanyId, currentPage, pageSize, globalSearch);
   };
 
