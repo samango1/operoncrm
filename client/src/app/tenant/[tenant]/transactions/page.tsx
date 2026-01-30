@@ -5,8 +5,15 @@ import { useParams } from 'next/navigation';
 import type { Transaction } from '@/types/api/transactions';
 import type { Company } from '@/types/api/companies';
 import type { Client } from '@/types/api/clients';
+import type { Product } from '@/types/api/products';
 
-import { getCompanyBySlug, getCompanyTransactions, getCompanyClients, getCompanyTransactionById } from '@/lib/api';
+import {
+  getCompanyBySlug,
+  getCompanyTransactions,
+  getCompanyClients,
+  getCompanyTransactionById,
+  getCompanyProducts,
+} from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
@@ -28,6 +35,7 @@ export default function TenantTransactionsPage() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +85,15 @@ export default function TenantTransactionsPage() {
     }
   };
 
+  const fetchProducts = async (id: string) => {
+    try {
+      const productsRes = await getCompanyProducts(id, { page: 1, page_size: 1000 });
+      setProducts(productsRes.results as Product[]);
+    } catch (err) {
+      console.error('fetchProducts error:', err);
+    }
+  };
+
   const fetchTransactions = async (id: string, page = currentPage, ps = pageSize, search = globalSearch) => {
     if (!id) {
       setTransactions([]);
@@ -104,8 +121,13 @@ export default function TenantTransactionsPage() {
   }, [slug]);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId) {
+      setClients([]);
+      setProducts([]);
+      return;
+    }
     fetchClients(companyId);
+    fetchProducts(companyId);
   }, [companyId]);
 
   useEffect(() => {
@@ -138,6 +160,17 @@ export default function TenantTransactionsPage() {
       .map((c) => {
         if (typeof c === 'string') return c;
         return c.name ?? String(c.id ?? '');
+      })
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const formatProductNames = (items?: Transaction['products']) => {
+    if (!items || items.length === 0) return '';
+    return (items as Array<string | { id?: string; name?: string }>)
+      .map((p) => {
+        if (typeof p === 'string') return p;
+        return p.name ?? String(p.id ?? '');
       })
       .filter(Boolean)
       .join(', ');
@@ -334,6 +367,7 @@ export default function TenantTransactionsPage() {
           <TransactionForm
             companies={companies}
             clients={clients}
+            products={products}
             defaultCompanyId={companyId}
             onCancel={closeCreate}
             onSuccess={onCreated}
@@ -358,6 +392,7 @@ export default function TenantTransactionsPage() {
                   transaction={selectedTransaction}
                   companies={companies}
                   clients={clients}
+                  products={products}
                   defaultCompanyId={
                     typeof selectedTransaction.company === 'string'
                       ? selectedTransaction.company
@@ -408,6 +443,9 @@ export default function TenantTransactionsPage() {
                   </div>
                   <div>
                     <strong>Категории:</strong> {formatCategoryNames(selectedTransaction.categories)}
+                  </div>
+                  <div>
+                    <strong>Продукты:</strong> {formatProductNames(selectedTransaction.products)}
                   </div>
                   <div>
                     <strong>Компания:</strong>{' '}

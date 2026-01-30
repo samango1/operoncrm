@@ -11,8 +11,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import Company, Transaction, Client, TransactionCategory
-from .serializers import CompanySerializer, TransactionSerializer, ClientSerializer, TransactionCategorySerializer
+from .models import Company, Transaction, Client, TransactionCategory, Product
+from .serializers import CompanySerializer, TransactionSerializer, ClientSerializer, TransactionCategorySerializer, ProductSerializer
 
 
 class CompanyAccessMixinLocal(CompanyAccessMixin):
@@ -60,6 +60,8 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
                 select_fields = ("company", "created_by")
             elif model_name == "transactioncategory":
                 select_fields = ("company", "created_by")
+            elif model_name == "product":
+                select_fields = ("company",)
             else:
                 select_fields = ("company", "created_by")
 
@@ -69,7 +71,13 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
             qs = qs
 
         if getattr(model, "__name__", "").lower() == "transaction":
-            qs = qs.prefetch_related("categories", "categories__company", "categories__created_by")
+            qs = qs.prefetch_related(
+                "categories",
+                "categories__company",
+                "categories__created_by",
+                "products",
+                "products__company",
+            )
 
         if hide_invalid_for_members and not (self._is_admin(user) or self._is_agent_owner_of_company(user, company)):
             try:
@@ -141,11 +149,15 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
                 "categories",
                 "categories__company",
                 "categories__created_by",
+                "products",
+                "products__company",
             )
         elif model is Client:
             sel = model.objects.select_related("company", "created_by")
         elif model is TransactionCategory:
             sel = model.objects.select_related("company", "created_by")
+        elif model is Product:
+            sel = model.objects.select_related("company")
         else:
             sel = model.objects.select_related("company", "created_by")
 
@@ -189,7 +201,7 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == "retrieve":
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
-        elif self.action in ("transactions", "transaction_detail", "clients", "client_detail"):
+        elif self.action in ("transactions", "transaction_detail", "clients", "client_detail", "products", "product_detail"):
             perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
         elif self.action in ("partial_update", "update"):
             perms = [IsAuthenticated(), IsCreatorOrAdmin()]
@@ -271,6 +283,27 @@ class CompanyViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
     def clients(self, request, id=None):
         company = self.get_object()
         return self._handle_list_create_related(request, company, rel_name="clients", serializer_class=ClientSerializer)
+
+    @extend_schema(
+        parameters=[OpenApiParameter(name="id", required=True, type=OpenApiTypes.UUID, description="Company id")],
+        operation_id="companies_products_list",
+    )
+    @action(detail=True, methods=["get", "post"], url_path="products")
+    def products(self, request, id=None):
+        company = self.get_object()
+        return self._handle_list_create_related(request, company, rel_name="products", serializer_class=ProductSerializer)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="id", required=True, type=OpenApiTypes.UUID, description="Company id"),
+            OpenApiParameter(name="product_id", required=True, type=OpenApiTypes.UUID, description="Product id"),
+        ],
+        operation_id="companies_products_detail",
+    )
+    @action(detail=True, methods=["get", "patch", "put", "delete"], url_path=r"products/(?P<product_id>[^/.]+)")
+    def product_detail(self, request, id=None, product_id=None):
+        company = self.get_object()
+        return self._handle_related_detail(request, company, obj_pk=product_id, model=Product, serializer_class=ProductSerializer)
 
     @extend_schema(
         parameters=[OpenApiParameter(name="id", required=True, type=OpenApiTypes.UUID, description="Company id")],
@@ -374,7 +407,7 @@ class ClientViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         elif self.action == "list":
             perms = [IsAuthenticated()]
         elif self.action == "create":
-            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
+            perms = [IsAuthenticated()]
         else:
             perms = [IsAuthenticated()]
         return perms
@@ -436,6 +469,8 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         "categories",
         "categories__company",
         "categories__created_by",
+        "products",
+        "products__company",
     )
     serializer_class = TransactionSerializer
     authentication_classes = [JWTAuthentication]
@@ -466,6 +501,8 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
             "categories",
             "categories__company",
             "categories__created_by",
+            "products",
+            "products__company",
         )
 
         if self._is_admin(user):
@@ -495,6 +532,8 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
                 "categories",
                 "categories__company",
                 "categories__created_by",
+                "products",
+                "products__company",
             ),
             pk=obj_id,
         )
@@ -503,6 +542,10 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         return instance
 
     def perform_create(self, serializer):
+        company = serializer.validated_data.get("company")
+        if company is None:
+            raise PermissionDenied("Company is required.")
+        self._ensure_company_access(self.request.user, company)
         serializer.save()
 
     def perform_update(self, serializer):
@@ -595,3 +638,76 @@ class TransactionCategoryViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet)
                 raise PermissionDenied("Agents can only update categories for their own companies.")
 
         serializer.save()
+
+
+class ProductViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
+    queryset = Product.objects.all().select_related("company")
+    serializer_class = ProductSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_permissions(self):
+        if self.action == "retrieve":
+            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
+        elif self.action in ("partial_update", "update"):
+            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
+        elif self.action == "destroy":
+            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
+        elif self.action == "list":
+            perms = [IsAuthenticated()]
+        elif self.action == "create":
+            perms = [IsAuthenticated(), IsMemberOrCreatedBy()]
+        else:
+            perms = [IsAuthenticated()]
+        return perms
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Product.objects.none()
+
+        base_qs = Product.objects.select_related("company")
+
+        if self._is_admin(user):
+            qs = base_qs.all()
+        elif self._is_agent(user):
+            qs = base_qs.filter(company__created_by=user)
+        else:
+            company_ids = list(self._user_companies_qs(user).values_list("id", flat=True))
+            if not company_ids:
+                return Product.objects.none()
+            qs = base_qs.filter(company_id__in=company_ids)
+
+        qs = apply_search_filter(qs, self.request, ngram_size=3, threshold=0.5)
+        return qs
+
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        obj_id = self.kwargs.get(lookup_url_kwarg)
+        instance = get_object_or_404(Product.objects.select_related("company"), pk=obj_id)
+        self._ensure_company_access(self.request.user, instance.company)
+        self.check_object_permissions(self.request, instance)
+        return instance
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def perform_update(self, serializer):
+        actor = self.request.user
+        instance = serializer.instance
+        new_company = serializer.validated_data.get("company", instance.company)
+
+        if not self._is_admin(actor) and not self._is_agent(actor):
+            if new_company.id != instance.company.id:
+                raise PermissionDenied("Members cannot change company of the product.")
+
+        if self._is_agent(actor) and not self._is_agent_owner_of_company(actor, new_company):
+            raise PermissionDenied("Agents can only update products for their own companies.")
+
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

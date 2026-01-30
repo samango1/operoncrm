@@ -7,6 +7,7 @@ import { User } from '@/types/api/users';
 import { Company } from '@/types/api/companies';
 import { Transaction, TransactionCategory } from '@/types/api/transactions';
 import { Client } from '@/types/api/clients';
+import { Product } from '@/types/api/products';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9999/api',
@@ -247,6 +248,31 @@ export const deleteCompanyTransactionCategory = async (companyId: string, catego
   return response.data;
 };
 
+// COMPANIES PRODUCTS
+export const getCompanyProducts = async (companyId: string, query?: BaseQuery): Promise<PaginatedResponse<Product>> => {
+  return getPaginated<Product>(`/companies/${companyId}/products/`, query);
+};
+export const createCompanyProduct = async (companyId: string, payload: Partial<Product>): Promise<Product> => {
+  const response = await apiClient.post<Product>(`/companies/${companyId}/products/`, payload);
+  return response.data;
+};
+export const getCompanyProductById = async (companyId: string, productId: string): Promise<Product> => {
+  const response = await apiClient.get<Product>(`/companies/${companyId}/products/${productId}/`);
+  return response.data;
+};
+export const updateCompanyProduct = async (
+  companyId: string,
+  productId: string,
+  payload: Partial<Product>
+): Promise<Product> => {
+  const response = await apiClient.patch<Product>(`/companies/${companyId}/products/${productId}/`, payload);
+  return response.data;
+};
+export const deleteCompanyProduct = async (companyId: string, productId: string): Promise<Product> => {
+  const response = await apiClient.delete<Product>(`/companies/${companyId}/products/${productId}/`);
+  return response.data;
+};
+
 // TRANSACTIONS
 export const getTransactions = async (query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
   return getPaginated<Transaction>('/transactions/', query);
@@ -291,6 +317,28 @@ export const updateTransactionCategory = async (
 };
 export const deleteTransactionCategory = async (id: string): Promise<TransactionCategory> => {
   const response = await apiClient.delete<TransactionCategory>(`/transaction-categories/${id}/`);
+  return response.data;
+};
+
+// PRODUCTS
+export const getProducts = async (query?: BaseQuery): Promise<PaginatedResponse<Product>> => {
+  return getPaginated<Product>('/products/', query);
+};
+export const getProductById = async (id: string, query?: BaseQuery): Promise<Product> => {
+  const params = cleanParams(query);
+  const response = await apiClient.get<Product>(`/products/${id}/`, { params });
+  return response.data;
+};
+export const createProduct = async (payload: Partial<Product>): Promise<Product> => {
+  const response = await apiClient.post<Product>('/products/', payload);
+  return response.data;
+};
+export const updateProduct = async (id: string, payload: Partial<Product>): Promise<Product> => {
+  const response = await apiClient.patch<Product>(`/products/${id}/`, payload);
+  return response.data;
+};
+export const deleteProduct = async (id: string): Promise<Product> => {
+  const response = await apiClient.delete<Product>(`/products/${id}/`);
   return response.data;
 };
 

@@ -10,6 +10,7 @@ export default async function TenantLayout({ children }: TenantLayoutProps) {
   const items: SidebarItem[] = [
     { path: '/transactions', label: 'Транзакции', icon: 'transactions' },
     { path: '/clients', label: 'Клиенты', icon: 'clients' },
+    { path: '/products', label: 'Продукты', icon: 'products' },
   ];
 
   return (

@@ -5,8 +5,9 @@ import type { Transaction } from '@/types/api/transactions';
 import type { Company } from '@/types/api/companies';
 import type { Client } from '@/types/api/clients';
 import type { PlatformRole } from '@/types/api/users';
+import type { Product } from '@/types/api/products';
 
-import { getCompanies, getCompanyTransactions, getClients, getCompanyTransactionById } from '@/lib/api';
+import { getCompanies, getCompanyTransactions, getClients, getCompanyTransactionById, getCompanyProducts } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
 import { getPlatformRoleFromCookie } from '@/lib/role';
 
@@ -25,6 +26,7 @@ export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +93,16 @@ export default function TransactionsPage() {
     }
   };
 
+  const fetchProducts = async (companyId: string) => {
+    try {
+      const res = await getCompanyProducts(companyId, { page: 1, page_size: 1000 });
+      setProducts(res.results as Product[]);
+    } catch (err) {
+      console.error('fetchProducts error:', err);
+      setProducts([]);
+    }
+  };
+
   useEffect(() => {
     fetchCompanies();
     fetchClients();
@@ -120,6 +132,14 @@ export default function TransactionsPage() {
     }
   }, [selectedCompanyId, currentPage, pageSize, globalSearch, validOnly]);
 
+  useEffect(() => {
+    if (selectedCompanyId) {
+      fetchProducts(selectedCompanyId);
+    } else {
+      setProducts([]);
+    }
+  }, [selectedCompanyId]);
+
   const selectedCompany = useMemo(() => {
     if (!selectedCompanyId) return undefined;
     return companies.find((c) => String(c.id) === String(selectedCompanyId));
@@ -146,6 +166,17 @@ export default function TransactionsPage() {
       .map((c) => {
         if (typeof c === 'string') return c;
         return c.name ?? String(c.id ?? '');
+      })
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const formatProductNames = (items?: Transaction['products']) => {
+    if (!items || items.length === 0) return '';
+    return (items as Array<string | { id?: string; name?: string }>)
+      .map((p) => {
+        if (typeof p === 'string') return p;
+        return p.name ?? String(p.id ?? '');
       })
       .filter(Boolean)
       .join(', ');
@@ -401,6 +432,7 @@ export default function TransactionsPage() {
           <TransactionForm
             companies={companies}
             clients={clients}
+            products={products}
             defaultCompanyId={selectedCompanyId}
             onCancel={closeCreate}
             onSuccess={onCreated}
@@ -425,6 +457,7 @@ export default function TransactionsPage() {
                   transaction={selectedTransaction}
                   companies={companies}
                   clients={clients}
+                  products={products}
                   defaultCompanyId={
                     typeof selectedTransaction.company === 'string'
                       ? selectedTransaction.company
@@ -475,6 +508,9 @@ export default function TransactionsPage() {
                   </div>
                   <div>
                     <strong>Категории:</strong> {formatCategoryNames(selectedTransaction.categories)}
+                  </div>
+                  <div>
+                    <strong>Продукты:</strong> {formatProductNames(selectedTransaction.products)}
                   </div>
                   <div>
                     <strong>Компания:</strong>{' '}

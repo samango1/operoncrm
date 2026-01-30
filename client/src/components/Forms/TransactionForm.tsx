@@ -9,11 +9,13 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Company } from '@/types/api/companies';
 import type { Transaction, TransactionCategory } from '@/types/api/transactions';
 import type { Client } from '@/types/api/clients';
+import type { Product } from '@/types/api/products';
 import { createTransaction, updateTransaction, getCompanyTransactionCategories } from '@/lib/api';
 
 type Props = {
   companies: Company[];
   clients?: Client[];
+  products?: Product[];
   defaultCompanyId?: string;
   transaction?: Transaction;
   onCancel: () => void;
@@ -23,6 +25,7 @@ type Props = {
 export default function TransactionForm({
   companies,
   clients = [],
+  products = [],
   defaultCompanyId,
   transaction,
   onCancel,
@@ -39,6 +42,7 @@ export default function TransactionForm({
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState<string>('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [productIds, setProductIds] = useState<string[]>([]);
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
 
@@ -49,6 +53,13 @@ export default function TransactionForm({
   const extractCategoryIds = (value?: Transaction['categories']): string[] => {
     if (!value) return [];
     return (value as Array<TransactionCategory | string>)
+      .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
+      .filter((id) => id);
+  };
+
+  const extractProductIds = (value?: Transaction['products']): string[] => {
+    if (!value) return [];
+    return (value as Array<Product | string>)
       .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
       .filter((id) => id);
   };
@@ -73,6 +84,7 @@ export default function TransactionForm({
     setDate((transaction.date ?? transaction.created_at ?? new Date().toISOString()).slice(0, 10));
     setDescription(transaction.description ?? '');
     setCategoryIds(extractCategoryIds(transaction.categories));
+    setProductIds(extractProductIds(transaction.products));
   }, [transaction]);
 
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
@@ -94,6 +106,22 @@ export default function TransactionForm({
   const clientOptions: OptionType<string>[] = filteredClients.map((c) => ({
     value: String(c.id),
     label: c.name ? `${c.name}${c.phone ? ` (${c.phone})` : ''}` : String(c.id),
+  }));
+
+  const getProductCompanyId = (p: Product): string | undefined => {
+    if (!p.company) return undefined;
+    return typeof p.company === 'string' ? p.company : String((p.company as Company)?.id ?? undefined);
+  };
+
+  const filteredProducts = (products ?? []).filter((p) => {
+    if (!companyId) return false;
+    const cid = getProductCompanyId(p);
+    return cid === companyId;
+  });
+
+  const productOptions: OptionType<string>[] = filteredProducts.map((p) => ({
+    value: String(p.id),
+    label: p.name ? `${p.name}${p.price ? ` (${p.price} ${p.currency ?? ''})` : ''}` : String(p.id),
   }));
 
   const fetchCategories = async (company: string) => {
@@ -126,6 +154,27 @@ export default function TransactionForm({
       setCategoryIds(next);
     }
   }, [categories, categoryIds]);
+
+  useEffect(() => {
+    if (!companyId) {
+      if (productIds.length > 0) {
+        setProductIds([]);
+      }
+      return;
+    }
+    if (filteredProducts.length === 0) {
+      if (productIds.length > 0) {
+        setProductIds([]);
+      }
+      return;
+    }
+    if (productIds.length === 0) return;
+    const validIds = new Set(filteredProducts.map((p) => String(p.id)));
+    const next = productIds.filter((id) => validIds.has(String(id)));
+    if (next.length !== productIds.length) {
+      setProductIds(next);
+    }
+  }, [filteredProducts, productIds, companyId]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -174,6 +223,7 @@ export default function TransactionForm({
       company: companyId,
       client: clientId || undefined,
       categories: categoryIds,
+      products: productIds,
     };
 
     try {
@@ -212,6 +262,12 @@ export default function TransactionForm({
         ? 'Категории для компании не найдены'
         : 'Выберите категорию';
 
+  const productPlaceholder = !companyId
+    ? 'Сначала выберите компанию'
+    : filteredProducts.length === 0
+      ? 'Продукты для компании не найдены'
+      : 'Выберите продукт';
+
   const categoryOptions: OptionType<string>[] = categories.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
@@ -244,6 +300,15 @@ export default function TransactionForm({
         value={categoryIds}
         onChange={(vals) => setCategoryIds(vals as string[])}
         disabled={!companyId || categoriesLoading}
+      />
+
+      <SelectMultiple
+        label='Продукты (опционально)'
+        placeholder={productPlaceholder}
+        options={productOptions}
+        value={productIds}
+        onChange={(vals) => setProductIds(vals as string[])}
+        disabled={!companyId}
       />
 
       <div className='flex gap-3'>

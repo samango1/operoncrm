@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 
@@ -203,6 +204,11 @@ class Transaction(models.Model):
         blank=True,
         related_name="transactions",
     )
+    products = models.ManyToManyField(
+        "Product",
+        blank=True,
+        related_name="transactions",
+    )
     company = models.ForeignKey(
         Company,
         null=False,
@@ -241,3 +247,59 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"Transaction {self.id} ({self.type}) — {self.amount} {self.currency}"
+
+
+class Product(models.Model):
+    CURRENCY_USD = "USD"
+    CURRENCY_UZS = "UZS"
+    CURRENCY_CHOICES = [
+        (CURRENCY_USD, "USD"),
+        (CURRENCY_UZS, "UZS"),
+    ]
+
+    UNIT_KILOGRAM = "kilogram"
+    UNIT_PIECE = "piece"
+    UNIT_METER = "meter"
+    UNIT_LITER = "liter"
+    UNIT_CHOICES = [
+        (UNIT_KILOGRAM, "Kilogram"),
+        (UNIT_PIECE, "Piece"),
+        (UNIT_METER, "Meter"),
+        (UNIT_LITER, "Liter"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    price = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
+    active = models.BooleanField(default=True)
+    stock_quantity = models.IntegerField(validators=[MinValueValidator(-1)])
+    min_stock_level = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES)
+    company = models.ForeignKey(
+        Company,
+        null=False,
+        blank=False,
+        on_delete=models.CASCADE,
+        related_name="products",
+    )
+    cost_price = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)]
+    )
+    weight = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    volume = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.id})"
+
+    def soft_delete(self):
+        if self.active:
+            self.active = False
+            self.save(update_fields=["active", "updated_at"])

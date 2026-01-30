@@ -1,11 +1,19 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Users, Building2, Banknote, Contact, Settings, Tag, type LucideIcon } from 'lucide-react';
+import { Home, Users, Building2, Banknote, Contact, Settings, Tag, Package, type LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
-export type SidebarIconKey = 'home' | 'users' | 'companies' | 'transactions' | 'clients' | 'categories' | 'settings';
+export type SidebarIconKey =
+  | 'home'
+  | 'users'
+  | 'companies'
+  | 'transactions'
+  | 'clients'
+  | 'categories'
+  | 'products'
+  | 'settings';
 
 export type SidebarItem = {
   path: string;
@@ -25,6 +33,7 @@ const iconMap: Record<SidebarIconKey, LucideIcon> = {
   transactions: Banknote,
   clients: Contact,
   categories: Tag,
+  products: Package,
   settings: Settings,
 };
 
@@ -35,10 +44,10 @@ export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {
 
   return (
     <aside className='fixed inset-x-0 bottom-0 z-40 w-full p-2 md:static md:h-screen md:w-80 md:p-3'>
-      <div className='h-full rounded-2xl bg-white shadow-md flex md:flex-col flex-row items-center md:items-stretch border border-gray-200 md:border-0'>
+      <div className='h-full rounded-2xl bg-white shadow-md flex md:flex-col flex-row items-center md:items-stretch border border-gray-200 md:border-0 overflow-hidden'>
         <div className='hidden md:block px-4 py-3 text-2xl font-semibold text-gray-700'>{title}</div>
 
-        <nav className='flex-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full'>
+        <nav className='flex-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full overflow-x-auto md:overflow-y-auto md:pr-1'>
           {items.map(({ path, label, icon }) => {
             const Icon = icon ? iconMap[icon] : undefined;
             return (
@@ -51,7 +60,7 @@ export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {
                 )}
                 onClick={() => router.push(path)}
               >
-                {Icon && <Icon className='w-5 h-5 opacity-70 group-hover:opacity-100' />}
+                {Icon && <Icon className='w-6 h-6 md:w-5 md:h-5 opacity-70 group-hover:opacity-100' />}
                 <span className='hidden md:inline'>{label}</span>
               </ButtonDefault>
             );

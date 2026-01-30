@@ -318,11 +318,7 @@ export default function ClientsPage() {
 
         {!noCompanySelected && (
           <div className='flex items-center justify-between gap-4'>
-            <SearchInput
-              initialValue={search}
-              onSearch={handleSearch}
-              placeholder='Поиск по имени, телефону, типу, описанию'
-            />
+            <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по имени, телефону, типу, описанию' />
             <ButtonDefault
               type='button'
               onClick={() => setShowFilters((v) => !v)}
