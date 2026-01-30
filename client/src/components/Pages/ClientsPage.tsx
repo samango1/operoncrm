@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { getClients, getClientById } from '@/lib/api';
+import { getClients, getClientById, getCompanies, getCompanyClientById, getCompanyClients } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
 import { getPlatformRoleFromCookie } from '@/lib/role';
 import type { Client } from '@/types/api/clients';
@@ -14,6 +14,7 @@ import ClientForm from '@/components/Forms/ClientForm';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
+import SelectOption from '@/components/Inputs/SelectOption';
 import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 
 import { Pencil, Eye, Funnel } from 'lucide-react';
@@ -21,10 +22,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [search, setSearch] = useState<string>('');
@@ -47,6 +50,22 @@ export default function ClientsPage() {
     setRole(resolvedRole);
   }, []);
 
+  const isScopedByCompany = useMemo(() => role === 'admin' || role === 'agent', [role]);
+
+  useEffect(() => {
+    if (!isScopedByCompany) return;
+    const fetchCompanies = async () => {
+      try {
+        const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
+        setCompanies(companiesRes.results as Company[]);
+      } catch (err) {
+        console.error('fetchCompanies error:', err);
+        setError('Не удалось загрузить компании');
+      }
+    };
+    fetchCompanies();
+  }, [isScopedByCompany]);
+
   useEffect(() => {
     const s = searchParams?.get('search') ?? '';
     const p = parseInt(searchParams?.get('page') ?? '', 10) || 1;
@@ -67,10 +86,18 @@ export default function ClientsPage() {
   const showValidSwitch = useMemo(() => role === 'admin' || role === 'agent', [role]);
 
   const fetchClients = async (page = currentPage, ps = pageSize, q = search, valid = validOnly) => {
-    setLoading(true);
     setError(null);
+    if (isScopedByCompany && !selectedCompanyId) {
+      setClients([]);
+      setCount(0);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await getClients({ page, page_size: ps, search: q, valid: valid ?? undefined });
+      const res = isScopedByCompany
+        ? await getCompanyClients(String(selectedCompanyId), { page, page_size: ps, search: q, valid: valid ?? undefined })
+        : await getClients({ page, page_size: ps, search: q, valid: valid ?? undefined });
       setClients(res.results);
       setCount(res.count);
     } catch (err) {
@@ -83,9 +110,10 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [currentPage, pageSize, search, validOnly]);
+  }, [currentPage, pageSize, search, validOnly, selectedCompanyId, isScopedByCompany]);
 
   const openViewModal = async (clientId: string) => {
+    if (isScopedByCompany && !selectedCompanyId) return;
     setIsModalOpen(true);
     setModalLoading(true);
     setModalError(null);
@@ -93,7 +121,9 @@ export default function ClientsPage() {
     setIsEditing(false);
 
     try {
-      const item = await getClientById(clientId, { deep: true });
+      const item = isScopedByCompany
+        ? await getCompanyClientById(String(selectedCompanyId), clientId)
+        : await getClientById(clientId, { deep: true });
       setSelectedClient(item);
     } catch (err) {
       console.error('getClientById error:', err);
@@ -104,6 +134,7 @@ export default function ClientsPage() {
   };
 
   const openEditModal = async (clientId: string) => {
+    if (isScopedByCompany && !selectedCompanyId) return;
     setIsModalOpen(true);
     setModalLoading(true);
     setModalError(null);
@@ -111,7 +142,9 @@ export default function ClientsPage() {
     setIsEditing(true);
 
     try {
-      const item = await getClientById(clientId, { deep: true });
+      const item = isScopedByCompany
+        ? await getCompanyClientById(String(selectedCompanyId), clientId)
+        : await getClientById(clientId, { deep: true });
       setSelectedClient(item);
     } catch (err) {
       console.error('getClientById error:', err);
@@ -122,6 +155,10 @@ export default function ClientsPage() {
   };
 
   const openCreateModal = () => {
+    if (isScopedByCompany && !selectedCompanyId) {
+      alert('Сначала выберите компанию');
+      return;
+    }
     setSelectedClient(null);
     setIsEditing(true);
     setModalError(null);
@@ -234,12 +271,27 @@ export default function ClientsPage() {
     updateUrl({ page: 1, page_size: pageSize, search: q, valid: validOnly });
   };
 
+  const companyOptions = useMemo(() => {
+    return companies.map((c) => ({
+      value: String(c.id),
+      label: c.name || c.slug || String(c.id),
+    }));
+  }, [companies]);
+
+  const noCompanySelected = isScopedByCompany && !selectedCompanyId;
+
   return (
     <>
       <section className='mb-6 flex justify-between'>
         <div>
           <h1 className='text-2xl font-semibold'>Клиенты</h1>
-          <p className='text-sm text-gray-500'>Всего: {count}</p>
+          <p className='text-sm text-gray-500'>
+            {isScopedByCompany
+              ? selectedCompanyId
+                ? `Всего клиентов: ${count}`
+                : 'Выберите компанию для просмотра клиентов'
+              : `Всего: ${count}`}
+          </p>
         </div>
         <div className='content-center'>
           <ButtonDefault onClick={openCreateModal} variant='positive'>
@@ -248,19 +300,42 @@ export default function ClientsPage() {
         </div>
       </section>
 
-      <div className='mb-4 flex items-center justify-between gap-4'>
-        <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по имени, телефону, типу, описанию' />
-        <ButtonDefault
-          type='button'
-          onClick={() => setShowFilters((v) => !v)}
-          aria-label='Показать фильтры'
-          variant={showFilters ? 'positive' : 'outline'}
-        >
-          <Funnel />
-        </ButtonDefault>
+      <div className='mb-4 space-y-4'>
+        {isScopedByCompany && (
+          <SelectOption
+            label='Компания'
+            placeholder='Выберите компанию'
+            options={companyOptions}
+            value={selectedCompanyId}
+            onChange={(value) => {
+              setSelectedCompanyId(value);
+              setCurrentPage(1);
+              setSearch('');
+              updateUrl({ page: 1, page_size: pageSize, search: '', valid: validOnly });
+            }}
+          />
+        )}
+
+        {!noCompanySelected && (
+          <div className='flex items-center justify-between gap-4'>
+            <SearchInput
+              initialValue={search}
+              onSearch={handleSearch}
+              placeholder='Поиск по имени, телефону, типу, описанию'
+            />
+            <ButtonDefault
+              type='button'
+              onClick={() => setShowFilters((v) => !v)}
+              aria-label='Показать фильтры'
+              variant={showFilters ? 'positive' : 'outline'}
+            >
+              <Funnel />
+            </ButtonDefault>
+          </div>
+        )}
       </div>
 
-      {showFilters && (
+      {!noCompanySelected && showFilters && (
         <div className='mb-4 rounded-lg border border-gray-200 bg-white/60 p-3'>
           {showValidSwitch && validOnly !== null && (
             <ToggleSwitch
@@ -281,8 +356,18 @@ export default function ClientsPage() {
       {error && <p className='text-red-600 mb-4'>{error}</p>}
 
       <div className='mb-4'>
-        {loading ? (
+        {noCompanySelected ? (
+          <div className='text-gray-600 p-6 bg-white/5 rounded'>Выберите компанию для просмотра клиентов</div>
+        ) : loading ? (
           <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
+        ) : clients.length === 0 ? (
+          <div className='text-gray-600 p-6 bg-white/5 rounded'>
+            {search
+              ? 'Нет клиентов, соответствующих запросу.'
+              : isScopedByCompany
+                ? 'Нет клиентов для этой компании.'
+                : 'Нет клиентов.'}
+          </div>
         ) : (
           <TableDefault<Client>
             columns={columns}
@@ -293,7 +378,9 @@ export default function ClientsPage() {
         )}
       </div>
 
-      <Pagination currentPage={currentPage} pageSize={pageSize} total={count} onPageChange={handlePageChange} />
+      {!noCompanySelected && (
+        <Pagination currentPage={currentPage} pageSize={pageSize} total={count} onPageChange={handlePageChange} />
+      )}
 
       <ModalWindowDefault isOpen={isModalOpen} onClose={closeModal} showCloseIcon>
         <div>
@@ -308,6 +395,8 @@ export default function ClientsPage() {
               {!modalLoading && (
                 <ClientForm
                   client={selectedClient}
+                  fixedCompanyId={isScopedByCompany ? selectedCompanyId : undefined}
+                  companiesOverride={isScopedByCompany ? companies : undefined}
                   onCancel={closeModal}
                   onSuccess={async () => {
                     closeModal();
