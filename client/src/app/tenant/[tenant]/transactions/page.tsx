@@ -225,15 +225,19 @@ export default function TenantTransactionsPage() {
       label: 'Дата',
       render: (r) => ((r.date ?? r.created_at) ? String(r.date ?? r.created_at).slice(0, 10) : ''),
     },
-    { key: 'type', label: 'Тип', render: (r) => r.type },
     {
       key: 'amount_currency',
       label: 'Сумма',
       render: (r) => {
         const amt = r.initial_amount ?? r.amount ?? '';
         const formatted = formatAmount(amt);
+        if (formatted === '') return '';
         const currency = r.currency ?? '';
-        return [formatted, currency].filter(Boolean).join(' ');
+        const display = [formatted, currency].filter(Boolean).join(' ');
+        const isIncome = r.type === 'income';
+        const sign = isIncome ? '+' : '-';
+        const colorClass = isIncome ? 'text-green-600' : 'text-red-600';
+        return <span className={`font-medium ${colorClass}`}>{`${sign}${display}`}</span>;
       },
     },
     {
