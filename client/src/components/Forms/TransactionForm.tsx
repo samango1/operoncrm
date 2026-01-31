@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import InputDefault from '@/components/Inputs/InputDefault';
 import TextAreaDefault from '../Inputs/TextAreaDefault';
 import SelectOption, { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
@@ -10,7 +10,7 @@ import type { Company } from '@/types/api/companies';
 import type { Transaction, TransactionCategory } from '@/types/api/transactions';
 import type { Client } from '@/types/api/clients';
 import type { Product } from '@/types/api/products';
-import { createTransaction, updateTransaction, getCompanyTransactionCategories } from '@/lib/api';
+import { createCompanyTransaction, updateCompanyTransaction, getCompanyTransactionCategories } from '@/lib/api';
 
 type Props = {
   companies: Company[];
@@ -45,6 +45,7 @@ export default function TransactionForm({
   const [productIds, setProductIds] = useState<string[]>([]);
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const prevCompanyIdRef = useRef<string | undefined>(undefined);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,13 +157,14 @@ export default function TransactionForm({
   }, [categories, categoryIds]);
 
   useEffect(() => {
-    if (!companyId) {
+    if (prevCompanyIdRef.current !== companyId) {
+      prevCompanyIdRef.current = companyId;
       if (productIds.length > 0) {
         setProductIds([]);
       }
       return;
     }
-    if (filteredProducts.length === 0) {
+    if (!companyId) {
       if (productIds.length > 0) {
         setProductIds([]);
       }
@@ -212,27 +214,26 @@ export default function TransactionForm({
       return;
     }
 
-    const payload: Partial<Transaction> = {
+    const payload: Partial<Transaction> & { discount?: number } = {
       initial_amount: Number(initialAmount),
-      discount_amount: Number(discount) || 0,
       type,
       method,
       currency,
       date,
       description: description || undefined,
-      company: companyId,
       client: clientId || undefined,
       categories: categoryIds,
       products: productIds,
+      discount: Number(discount) || 0,
     };
 
     try {
       setLoading(true);
       let resp: Transaction;
       if (transaction && transaction.id) {
-        resp = await updateTransaction(String(transaction.id), payload);
+        resp = await updateCompanyTransaction(String(companyId), String(transaction.id), payload);
       } else {
-        resp = await createTransaction(payload);
+        resp = await createCompanyTransaction(String(companyId), payload);
       }
       onCancel();
       try {

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { SelectHTMLAttributes, useEffect, useState } from 'react';
+import React, { InputHTMLAttributes, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { SelectOption as OptionType } from './SelectOption';
+import InputDefault from './InputDefault';
 
 interface SelectMultipleProps<T extends string | number> extends Omit<
-  SelectHTMLAttributes<HTMLSelectElement>,
+  InputHTMLAttributes<HTMLInputElement>,
   'onChange' | 'value'
 > {
   label?: string;
@@ -29,92 +30,101 @@ export default function SelectMultiple<T extends string | number>({
   className,
   ...props
 }: SelectMultipleProps<T>) {
-  const [currentKey, setCurrentKey] = useState<string>('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filteredOptions = useMemo(() => {
+    const selected = new Set((value ?? []).map((v) => String(v)));
+    const base = options.filter((o) => !selected.has(String(o.value)));
+    const query = search.trim().toLowerCase();
+    if (!query) return base;
+    return base.filter((o) => o.label.toLowerCase().includes(query) || String(o.value).toLowerCase().includes(query));
+  }, [options, value, search]);
 
   useEffect(() => {
-    if (currentKey === '') return;
-    const exists = options.some((o) => String(o.value) === currentKey && !o.disabled);
-    if (!exists) setCurrentKey('');
-  }, [options, currentKey]);
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setCurrentKey(e.target.value);
-  };
-
-  const handleAdd = () => {
-    if (disabled || currentKey === '') return;
-    const opt = options.find((o) => String(o.value) === currentKey);
-    if (!opt) return;
-    if (opt.disabled) return;
-    if (value.some((v) => String(v) === String(opt.value))) {
-      setCurrentKey('');
-      return;
-    }
+  const handleAdd = (opt: OptionType<T>) => {
+    if (disabled || opt.disabled) return;
+    if (value.some((v) => String(v) === String(opt.value))) return;
     onChange([...value, opt.value]);
-    setCurrentKey('');
+    setSearch('');
+    setIsOpen(false);
+    requestAnimationFrame(() => inputRef.current?.blur());
   };
 
   const handleRemove = (val: T) => {
     onChange(value.filter((v) => String(v) !== String(val)));
   };
 
-  const isAddDisabled = (() => {
-    if (disabled) return true;
-    if (currentKey === '') return true;
-    const opt = options.find((o) => String(o.value) === currentKey);
-    if (!opt) return true;
-    if (opt.disabled) return true;
-    if (value.some((v) => String(v) === String(opt.value))) return true;
-    return false;
-  })();
+  const handleFocus = () => {
+    if (!disabled) setIsOpen(true);
+  };
+
+  const handleBlur = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => setIsOpen(false), 120);
+  };
 
   return (
     <div className='flex flex-col'>
       {label && <label className='mb-1 text-md font-medium text-gray-700'>{label}</label>}
 
-      <div className='flex justify-between gap-2'>
-        <select
-          value={currentKey}
+      <div className='relative'>
+        <InputDefault
+          ref={inputRef}
+          placeholder={placeholder}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           disabled={disabled}
-          onChange={handleSelectChange}
           className={clsx(
-            'h-10 rounded-md border w-full cursor-pointer px-3 text-md outline-none transition focus:ring-2 focus:ring-blue-500',
-            'bg-white',
             disabled && 'cursor-not-allowed opacity-50',
             error ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-gray-300 focus:ring-1 focus:ring-black',
             className
           )}
           {...props}
-        >
-          <option value=''>{placeholder}</option>
+        />
 
-          {options.map((opt) => (
-            <option key={String(opt.value)} value={String(opt.value)} disabled={opt.disabled}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-
-        <button
-          type='button'
-          onClick={handleAdd}
-          disabled={isAddDisabled}
-          aria-label='Добавить'
-          className={clsx(
-            'h-10 px-3 rounded-md border flex items-center justify-center select-none',
-            isAddDisabled ? 'opacity-50 cursor-not-allowed border-gray-200' : 'bg-white border-gray-300 hover:bg-gray-50',
-            'transition'
-          )}
-        >
-          +
-        </button>
+        {isOpen && !disabled && (
+          <div className='absolute z-10 mt-1 w-full max-h-56 overflow-auto rounded-md border border-gray-200 bg-white shadow-sm'>
+            {filteredOptions.length === 0 ? (
+              <div className='px-3 py-2 text-sm text-gray-500'>Ничего не найдено</div>
+            ) : (
+              filteredOptions.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  type='button'
+                  disabled={opt.disabled}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleAdd(opt);
+                  }}
+                  className={clsx(
+                    'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                    opt.disabled && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {error && <span className='text-xs text-red-500 mt-1'>{error}</span>}
 
       <div className='mt-3 flex flex-wrap gap-2'>
-        {value.length === 0 && <span className='text-sm text-gray-500'>Пусто</span>}
-
         {value.map((val) => {
           const opt = options.find((o) => String(o.value) === String(val));
           const labelText = opt ? opt.label : String(val);
