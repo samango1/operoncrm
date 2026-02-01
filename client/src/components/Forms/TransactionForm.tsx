@@ -25,6 +25,7 @@ import {
   normalizeDecimalInput,
   toDecimalString,
 } from '@/lib/decimal';
+import { buildTashkentDateTime, getTashkentNowParts, splitDateTimeToTashkent } from '@/lib/datetime';
 
 type Props = {
   companies: Company[];
@@ -45,6 +46,7 @@ export default function TransactionForm({
   onCancel,
   onSuccess,
 }: Props) {
+  const initialNowRef = useRef(getTashkentNowParts());
   const initialCompanyId = defaultCompanyId ? String(defaultCompanyId) : undefined;
   const [companyId, setCompanyId] = useState<string | undefined>(initialCompanyId);
   const [clientId, setClientId] = useState<string | undefined>(undefined);
@@ -53,7 +55,8 @@ export default function TransactionForm({
   const [type, setType] = useState<'income' | 'outcome'>('income');
   const [method, setMethod] = useState<'cash' | 'card'>('cash');
   const [currency, setCurrency] = useState<'UZS' | 'USD'>('UZS');
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState<string>(initialNowRef.current.date);
+  const [time, setTime] = useState<string>(initialNowRef.current.time);
   const [description, setDescription] = useState<string>('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [productIds, setProductIds] = useState<string[]>([]);
@@ -97,7 +100,9 @@ export default function TransactionForm({
     setType(transaction.type ?? 'income');
     setMethod(transaction.method ?? 'cash');
     setCurrency(transaction.currency ?? 'UZS');
-    setDate((transaction.date ?? transaction.created_at ?? new Date().toISOString()).slice(0, 10));
+    const dateTime = splitDateTimeToTashkent(transaction.date ?? transaction.created_at ?? null);
+    setDate(dateTime.date);
+    setTime(dateTime.time);
     setDescription(transaction.description ?? '');
     setCategoryIds(extractCategoryIds(transaction.categories));
     setProductIds(extractProductIds(transaction.products));
@@ -244,12 +249,18 @@ export default function TransactionForm({
       return;
     }
 
+    const dateTimeValue = buildTashkentDateTime(date, time);
+    if (!dateTimeValue) {
+      setError('Укажите дату');
+      return;
+    }
+
     const payload: Partial<Transaction> = {
       initial_amount: normalizedInitial,
       type,
       method,
       currency,
-      date,
+      date: dateTimeValue,
       description: description || undefined,
       client: clientId || undefined,
       categories: categoryIds,
@@ -386,7 +397,10 @@ export default function TransactionForm({
           inputMode='decimal'
         />
       </div>
-      <InputDefault label='Дата' type='date' value={date} onChange={(e) => setDate(e.target.value)} />
+      <div className='grid grid-cols-2 gap-3'>
+        <InputDefault label='Дата' type='date' value={date} onChange={(e) => setDate(e.target.value)} />
+        <InputDefault label='Время' type='time' value={time} onChange={(e) => setTime(e.target.value)} step={60} />
+      </div>
 
       <div className='grid grid-cols-3 gap-3'>
         <SelectOption
