@@ -329,15 +329,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         required=False,
     )
 
-    discount = serializers.DecimalField(
-        source="discount_amount",
-        write_only=True,
-        required=False,
-        min_value=0,
-        max_digits=18,
-        decimal_places=2,
-    )
-
     amount = serializers.DecimalField(read_only=True, max_digits=18, decimal_places=2)
 
     valid = serializers.BooleanField(read_only=True)
@@ -347,7 +338,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "initial_amount",
-            "discount",
             "discount_amount",
             "amount",
             "type",
@@ -363,7 +353,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "amount", "created_at", "updated_at", "discount_amount", "valid"]
+        read_only_fields = ["id", "amount", "created_at", "updated_at", "valid"]
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)

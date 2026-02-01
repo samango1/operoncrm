@@ -221,7 +221,7 @@ export default function TransactionsPage() {
       key: 'amount_currency',
       label: 'Сумма',
       render: (r) => {
-        const amt = r.initial_amount ?? r.amount ?? '';
+        const amt = r.amount ?? '';
         const formatted = formatMoney(amt);
         if (formatted === '') return '';
         const currency = r.currency ?? '';
@@ -483,8 +483,7 @@ export default function TransactionsPage() {
                     <strong>Тип:</strong> {selectedTransaction.type}
                   </div>
                   <div>
-                    <strong>Сумма:</strong> {formatMoney(selectedTransaction.initial_amount ?? selectedTransaction.amount)}{' '}
-                    {selectedTransaction.currency}
+                    <strong>Сумма:</strong> {formatMoney(selectedTransaction.amount)} {selectedTransaction.currency}
                   </div>
                   <div>
                     <strong>Клиент:</strong>{' '}

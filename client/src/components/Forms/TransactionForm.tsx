@@ -244,7 +244,7 @@ export default function TransactionForm({
       return;
     }
 
-    const payload: Partial<Transaction> & { discount?: string } = {
+    const payload: Partial<Transaction> = {
       initial_amount: normalizedInitial,
       type,
       method,
@@ -255,7 +255,7 @@ export default function TransactionForm({
       categories: categoryIds,
       products: productIds,
       company: companyId ?? undefined,
-      discount: normalizedDiscount,
+      discount_amount: normalizedDiscount,
     };
 
     try {
