@@ -10,7 +10,13 @@ import type { Company } from '@/types/api/companies';
 import type { Transaction, TransactionCategory } from '@/types/api/transactions';
 import type { Client } from '@/types/api/clients';
 import type { Product } from '@/types/api/products';
-import { createCompanyTransaction, updateCompanyTransaction, getCompanyTransactionCategories } from '@/lib/api';
+import {
+  createCompanyTransaction,
+  updateCompanyTransaction,
+  getCompanyTransactionCategories,
+  deleteCompanyTransaction,
+  deleteTransaction,
+} from '@/lib/api';
 import {
   compareDecimalStrings,
   formatMoney,
@@ -56,6 +62,7 @@ export default function TransactionForm({
   const prevCompanyIdRef = useRef<string | undefined>(undefined);
 
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCompanyLocked = Boolean(defaultCompanyId);
 
@@ -298,8 +305,31 @@ export default function TransactionForm({
     label: c.name ?? String(c.id),
   }));
 
+  const handleDelete = async () => {
+    if (!transaction || !transaction.id) return;
+    const ok = window.confirm('Вы уверены, что хотите удалить эту транзакцию? Это действие невозможно отменить.');
+    if (!ok) return;
+
+    setError(null);
+    setDeleting(true);
+    try {
+      if (companyId) {
+        await deleteCompanyTransaction(String(companyId), String(transaction.id));
+      } else {
+        await deleteTransaction(String(transaction.id));
+      }
+      await onSuccess(transaction);
+    } catch (err: any) {
+      console.error('TransactionForm delete error:', err);
+      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при удалении транзакции';
+      setError(String(msg));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className='space-y-4'>
+    <form onSubmit={handleSubmit} className='space-y-4 max-h-[70vh] overflow-y-auto px-1 md:max-h-none md:overflow-visible'>
       {!isCompanyLocked && (
         <SelectOption
           label='Компания'
@@ -388,13 +418,23 @@ export default function TransactionForm({
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
 
-      <div className='flex justify-end gap-3'>
-        <ButtonDefault type='button' variant='secondary' onClick={onCancel} disabled={loading}>
-          Отмена
-        </ButtonDefault>
-        <ButtonDefault type='submit' variant='positive' disabled={loading}>
-          {loading ? 'Сохранение...' : transaction ? 'Сохранить' : 'Создать'}
-        </ButtonDefault>
+      <div className='flex justify-between'>
+        <div>
+          {transaction && transaction.id && (
+            <ButtonDefault type='button' variant='danger' onClick={handleDelete} disabled={loading || deleting}>
+              {deleting ? 'Подождите...' : 'Удалить'}
+            </ButtonDefault>
+          )}
+        </div>
+
+        <div className='flex gap-3'>
+          <ButtonDefault type='button' variant='secondary' onClick={onCancel} disabled={loading || deleting}>
+            Отмена
+          </ButtonDefault>
+          <ButtonDefault type='submit' variant='positive' disabled={loading || deleting}>
+            {loading ? 'Сохранение...' : transaction ? 'Сохранить' : 'Создать'}
+          </ButtonDefault>
+        </div>
       </div>
     </form>
   );
