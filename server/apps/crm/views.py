@@ -138,7 +138,10 @@ class CompanyAccessMixinLocal(CompanyAccessMixin):
 
         serializer = serializer_class(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        serializer.save(company=company)
+        save_kwargs = {"company": company}
+        if "created_by" in getattr(serializer, "fields", {}):
+            save_kwargs["created_by"] = user
+        serializer.save(**save_kwargs)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def _handle_related_detail(self, request, company, obj_pk, model, serializer_class):

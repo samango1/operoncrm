@@ -86,12 +86,18 @@ class IsMemberOrCreatedBy(BasePermission):
         if getattr(user, "is_admin", False):
             return True
 
+        creator_id = getattr(obj, "created_by_id", None)
+        if creator_id is not None and str(creator_id) == str(user.id):
+            return True
+
         Company = apps.get_model("crm", "Company")
         if isinstance(obj, Company):
             return self._is_member_or_owner(user, obj)
 
         company = getattr(obj, "company", None)
         if getattr(obj, "valid", True) is False:
+            if request.method == "DELETE":
+                return self._is_member_or_owner(user, company)
             return company is not None and company.created_by_id == user.id
 
         return self._is_member_or_owner(user, company)
