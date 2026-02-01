@@ -14,19 +14,7 @@ interface InputDefaultProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const InputDefault = React.forwardRef<HTMLInputElement, InputDefaultProps>(
-  (
-    {
-      icon: Icon,
-      label,
-      placeholder,
-      error,
-      prewritten,
-      type = 'text',
-      className,
-      ...props
-    },
-    ref
-  ) => {
+  ({ icon: Icon, label, placeholder, error, prewritten, type = 'text', className, ...props }, ref) => {
     return (
       <div className='flex flex-col w-full'>
         {label && <label className='mb-1 text-md font-medium text-gray-700'>{label}</label>}

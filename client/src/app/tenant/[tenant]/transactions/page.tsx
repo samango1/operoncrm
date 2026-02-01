@@ -418,8 +418,7 @@ export default function TenantTransactionsPage() {
                     <strong>Тип:</strong> {selectedTransaction.type}
                   </div>
                   <div>
-                    <strong>Сумма:</strong>{' '}
-                    {formatMoney(selectedTransaction.initial_amount ?? selectedTransaction.amount)}{' '}
+                    <strong>Сумма:</strong> {formatMoney(selectedTransaction.initial_amount ?? selectedTransaction.amount)}{' '}
                     {selectedTransaction.currency}
                   </div>
                   <div>

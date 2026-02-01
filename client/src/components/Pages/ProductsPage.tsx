@@ -347,8 +347,7 @@ export default function ProductsPage() {
                     <strong>Описание:</strong> {selectedProduct.description}
                   </div>
                   <div>
-                    <strong>Цена:</strong> {formatMoney(selectedProduct.price)}{' '}
-                    {selectedProduct.currency}
+                    <strong>Цена:</strong> {formatMoney(selectedProduct.price)} {selectedProduct.currency}
                   </div>
                   <div>
                     <strong>Остаток:</strong> {renderStock(selectedProduct.stock_quantity)}
@@ -360,8 +359,7 @@ export default function ProductsPage() {
                     <strong>Ед. изм.:</strong> {selectedProduct.unit}
                   </div>
                   <div>
-                    <strong>Себестоимость:</strong>{' '}
-                    {formatMoney(selectedProduct.cost_price ?? '')}
+                    <strong>Себестоимость:</strong> {formatMoney(selectedProduct.cost_price ?? '')}
                   </div>
                   <div>
                     <strong>Вес, кг:</strong> {formatMeasure(selectedProduct.weight ?? '')}

@@ -11,7 +11,14 @@ import type { Transaction, TransactionCategory } from '@/types/api/transactions'
 import type { Client } from '@/types/api/clients';
 import type { Product } from '@/types/api/products';
 import { createCompanyTransaction, updateCompanyTransaction, getCompanyTransactionCategories } from '@/lib/api';
-import { compareDecimalStrings, formatMoney, isValidDecimal, maskDecimalInput, normalizeDecimalInput, toDecimalString } from '@/lib/decimal';
+import {
+  compareDecimalStrings,
+  formatMoney,
+  isValidDecimal,
+  maskDecimalInput,
+  normalizeDecimalInput,
+  toDecimalString,
+} from '@/lib/decimal';
 
 type Props = {
   companies: Company[];
