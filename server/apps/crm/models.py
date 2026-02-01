@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import F
 from django.utils.text import slugify
 
 
@@ -258,6 +259,14 @@ class Transaction(models.Model):
     def __str__(self):
         return f"Transaction {self.id} ({self.type}) — {self.amount} {self.currency}"
 
+    @classmethod
+    def stock_delta_for_type(cls, transaction_type):
+        if transaction_type == cls.TYPE_INCOME:
+            return -1
+        if transaction_type == cls.TYPE_OUTCOME:
+            return 1
+        return 0
+
 
 class Product(models.Model):
     CURRENCY_USD = "USD"
@@ -333,3 +342,11 @@ class Product(models.Model):
         if self.active:
             self.active = False
             self.save(update_fields=["active", "updated_at"])
+
+    @classmethod
+    def adjust_stock(cls, products, delta):
+        if not products or not delta:
+            return
+        product_ids = [getattr(product, "id", product) for product in products]
+        qs = cls.objects.filter(id__in=product_ids).exclude(stock_quantity=-1)
+        qs.update(stock_quantity=F("stock_quantity") + delta)

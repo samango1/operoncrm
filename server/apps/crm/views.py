@@ -1,4 +1,5 @@
 from django.core.exceptions import FieldDoesNotExist
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
@@ -546,7 +547,13 @@ class TransactionViewSet(CompanyAccessMixinLocal, viewsets.ModelViewSet):
         if company is None:
             raise PermissionDenied("Company is required.")
         self._ensure_company_access(self.request.user, company)
-        serializer.save()
+        products = serializer.validated_data.get("products") or []
+        transaction_type = serializer.validated_data.get("type")
+        stock_delta = Transaction.stock_delta_for_type(transaction_type)
+        with transaction.atomic():
+            serializer.save()
+            if products and stock_delta:
+                Product.adjust_stock(products, stock_delta)
 
     def perform_update(self, serializer):
         actor = self.request.user

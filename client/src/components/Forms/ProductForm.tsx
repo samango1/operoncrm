@@ -56,13 +56,21 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
   const [error, setError] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
 
+  const deriveStockMode = (value: number | ''): 'unlimited' | 'out' | 'in' => {
+    if (value === -1) return 'unlimited';
+    if (value === '' || Number(value) <= 0) return 'out';
+    return 'in';
+  };
+
   useEffect(() => {
+    const nextStockQuantity = product?.stock_quantity ?? 0;
     setName(product?.name ?? '');
     setDescription(product?.description ?? '');
     setPrice(toDecimalString(product?.price ?? ''));
     setCurrency(product?.currency ?? 'UZS');
     setActive(product?.active ?? true);
-    setStockQuantity(product?.stock_quantity ?? 0);
+    setStockQuantity(nextStockQuantity);
+    setStockMode(deriveStockMode(nextStockQuantity));
     setMinStockLevel(product?.min_stock_level ?? 1);
     setUnit(product?.unit ?? 'piece');
     setCostPrice(toDecimalString(product?.cost_price ?? ''));
@@ -70,18 +78,6 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
     setVolume(toDecimalString(product?.volume ?? ''));
     setCompanyId(fixedCompanyId ?? extractCompanyId(product?.company));
   }, [product, fixedCompanyId]);
-
-  useEffect(() => {
-    if (stockQuantity === -1) {
-      setStockMode('unlimited');
-      return;
-    }
-    if (Number(stockQuantity) <= 0 || stockQuantity === '') {
-      setStockMode('out');
-      return;
-    }
-    setStockMode('in');
-  }, [stockQuantity]);
 
   useEffect(() => {
     let mounted = true;
@@ -327,6 +323,12 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
           type='number'
           value={stockQuantity}
           onChange={(e) => setStockQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+          onBlur={() => {
+            if (stockQuantity === '' || Number(stockQuantity) <= 0) {
+              setStockQuantity(0);
+              setStockMode('out');
+            }
+          }}
           min={1}
           required
         />
