@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -184,9 +185,16 @@ class Transaction(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    initial_amount = models.PositiveBigIntegerField()
-    discount_amount = models.PositiveBigIntegerField(default=0)
-    amount = models.PositiveBigIntegerField(editable=False)
+    initial_amount = models.DecimalField(
+        max_digits=18, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
+    )
+    discount_amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    amount = models.DecimalField(max_digits=18, decimal_places=2, editable=False)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     method = models.CharField(max_length=10, choices=METHOD_CHOICES)
     date = models.DateTimeField()
@@ -226,15 +234,17 @@ class Transaction(models.Model):
 
     def clean(self):
         if self.discount_amount is None:
-            self.discount_amount = 0
-        if self.initial_amount < 0 or self.discount_amount < 0:
-            raise ValueError("Amounts must be non-negative.")
+            self.discount_amount = Decimal("0")
+        if self.initial_amount <= 0 or self.discount_amount < 0:
+            raise ValueError("Amounts must be positive, discount must be non-negative.")
         if self.discount_amount > self.initial_amount:
             raise ValueError("Discount cannot exceed initial amount.")
 
     def save(self, *args, **kwargs):
         if self.discount_amount is None:
-            self.discount_amount = 0
+            self.discount_amount = Decimal("0")
+        if self.initial_amount <= 0:
+            raise ValueError("Initial amount must be greater than zero.")
         if self.discount_amount > self.initial_amount:
             raise ValueError("Discount cannot exceed initial amount.")
         self.amount = self.initial_amount - self.discount_amount
@@ -271,7 +281,11 @@ class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     description = models.TextField()
-    price = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    price = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
     active = models.BooleanField(default=True)
     stock_quantity = models.IntegerField(validators=[MinValueValidator(-1)])
@@ -284,11 +298,27 @@ class Product(models.Model):
         on_delete=models.CASCADE,
         related_name="products",
     )
-    cost_price = models.PositiveIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1)]
+    cost_price = models.DecimalField(
+        null=True,
+        blank=True,
+        max_digits=18,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
     )
-    weight = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
-    volume = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    weight = models.DecimalField(
+        null=True,
+        blank=True,
+        max_digits=12,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    volume = models.DecimalField(
+        null=True,
+        blank=True,
+        max_digits=12,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

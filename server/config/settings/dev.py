@@ -49,6 +49,7 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "config.pagination.CustomPageNumberPagination",
+    "COERCE_DECIMAL_TO_STRING": True,
 }
 
 SPECTACULAR_SETTINGS = {

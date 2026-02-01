@@ -9,6 +9,7 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Product, ProductCurrency, ProductUnit } from '@/types/api/products';
 import type { Company } from '@/types/api/companies';
 import type { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
+import { compareDecimalStrings, isValidDecimal, maskDecimalInput, normalizeDecimalInput, toDecimalString } from '@/lib/decimal';
 import {
   getCompanies,
   createProduct,
@@ -36,16 +37,16 @@ const extractCompanyId = (company?: Company | string): string | undefined => {
 export default function ProductForm({ product, onCancel, onSuccess, fixedCompanyId, companiesOverride }: Props) {
   const [name, setName] = useState<string>(product?.name ?? '');
   const [description, setDescription] = useState<string>(product?.description ?? '');
-  const [price, setPrice] = useState<number | ''>(product?.price ?? '');
+  const [price, setPrice] = useState<string>(toDecimalString(product?.price ?? ''));
   const [currency, setCurrency] = useState<ProductCurrency>(product?.currency ?? 'UZS');
   const [active, setActive] = useState<boolean>(product?.active ?? true);
   const [stockQuantity, setStockQuantity] = useState<number | ''>(product?.stock_quantity ?? 0);
   const [stockMode, setStockMode] = useState<'unlimited' | 'out' | 'in'>('out');
   const [minStockLevel, setMinStockLevel] = useState<number | ''>(product?.min_stock_level ?? 1);
   const [unit, setUnit] = useState<ProductUnit>(product?.unit ?? 'piece');
-  const [costPrice, setCostPrice] = useState<number | ''>(product?.cost_price ?? '');
-  const [weight, setWeight] = useState<number | ''>(product?.weight ?? '');
-  const [volume, setVolume] = useState<number | ''>(product?.volume ?? '');
+  const [costPrice, setCostPrice] = useState<string>(toDecimalString(product?.cost_price ?? ''));
+  const [weight, setWeight] = useState<string>(toDecimalString(product?.weight ?? ''));
+  const [volume, setVolume] = useState<string>(toDecimalString(product?.volume ?? ''));
   const [companyId, setCompanyId] = useState<string | undefined>(fixedCompanyId ?? extractCompanyId(product?.company));
 
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -58,15 +59,15 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
   useEffect(() => {
     setName(product?.name ?? '');
     setDescription(product?.description ?? '');
-    setPrice(product?.price ?? '');
+    setPrice(toDecimalString(product?.price ?? ''));
     setCurrency(product?.currency ?? 'UZS');
     setActive(product?.active ?? true);
     setStockQuantity(product?.stock_quantity ?? 0);
     setMinStockLevel(product?.min_stock_level ?? 1);
     setUnit(product?.unit ?? 'piece');
-    setCostPrice(product?.cost_price ?? '');
-    setWeight(product?.weight ?? '');
-    setVolume(product?.volume ?? '');
+    setCostPrice(toDecimalString(product?.cost_price ?? ''));
+    setWeight(toDecimalString(product?.weight ?? ''));
+    setVolume(toDecimalString(product?.volume ?? ''));
     setCompanyId(fixedCompanyId ?? extractCompanyId(product?.company));
   }, [product, fixedCompanyId]);
 
@@ -154,7 +155,8 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       return;
     }
 
-    if (price === '' || Number(price) <= 0) {
+    const normalizedPrice = normalizeDecimalInput(price);
+    if (!isValidDecimal(normalizedPrice, { maxFractionDigits: 2 }) || compareDecimalStrings(normalizedPrice, '0') <= 0) {
       setError('Цена должна быть больше 0');
       return;
     }
@@ -173,20 +175,47 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       return;
     }
 
+    const normalizedCostPrice = costPrice === '' ? '' : normalizeDecimalInput(costPrice);
+    if (
+      costPrice !== '' &&
+      (!isValidDecimal(normalizedCostPrice, { maxFractionDigits: 2 }) || compareDecimalStrings(normalizedCostPrice, '0') <= 0)
+    ) {
+      setError('Себестоимость должна быть больше 0');
+      return;
+    }
+
+    const normalizedWeight = weight === '' ? '' : normalizeDecimalInput(weight);
+    if (
+      weight !== '' &&
+      (!isValidDecimal(normalizedWeight, { maxFractionDigits: 3 }) || compareDecimalStrings(normalizedWeight, '0') < 0)
+    ) {
+      setError('Вес должен быть 0 или больше');
+      return;
+    }
+
+    const normalizedVolume = volume === '' ? '' : normalizeDecimalInput(volume);
+    if (
+      volume !== '' &&
+      (!isValidDecimal(normalizedVolume, { maxFractionDigits: 3 }) || compareDecimalStrings(normalizedVolume, '0') < 0)
+    ) {
+      setError('Объем должен быть 0 или больше');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: Partial<Product> = {
         name: name.trim(),
         description: description.trim(),
-        price: Number(price),
+        price: normalizedPrice,
         currency,
         active,
         stock_quantity: stockMode === 'unlimited' ? -1 : stockMode === 'out' ? 0 : Number(stockQuantity),
         min_stock_level: Number(minStockLevel),
         unit,
-        cost_price: costPrice === '' ? undefined : Number(costPrice),
-        weight: weight === '' ? undefined : Number(weight),
-        volume: volume === '' ? undefined : Number(volume),
+        cost_price: normalizedCostPrice === '' ? undefined : normalizedCostPrice,
+        weight: normalizedWeight === '' ? undefined : normalizedWeight,
+        volume: normalizedVolume === '' ? undefined : normalizedVolume,
         company: companyId ?? undefined,
       };
 
@@ -252,10 +281,10 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       <div className='grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3'>
         <InputDefault
           label='Цена'
-          type='number'
+          type='text'
           value={price}
-          onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
-          min={1}
+          onChange={(e) => setPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+          inputMode='decimal'
           required
         />
 
@@ -310,24 +339,24 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       <div className='grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3'>
         <InputDefault
           label='Себестоимость'
-          type='number'
+          type='text'
           value={costPrice}
-          onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
-          min={1}
+          onChange={(e) => setCostPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+          inputMode='decimal'
         />
         <InputDefault
           label='Вес, кг'
-          type='number'
+          type='text'
           value={weight}
-          onChange={(e) => setWeight(e.target.value === '' ? '' : Number(e.target.value))}
-          min={0}
+          onChange={(e) => setWeight(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
+          inputMode='decimal'
         />
         <InputDefault
           label='Объем, м³'
-          type='number'
+          type='text'
           value={volume}
-          onChange={(e) => setVolume(e.target.value === '' ? '' : Number(e.target.value))}
-          min={0}
+          onChange={(e) => setVolume(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
+          inputMode='decimal'
         />
       </div>
       <div className='flex items-end'>

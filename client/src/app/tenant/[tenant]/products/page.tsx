@@ -12,6 +12,7 @@ import ProductForm from '@/components/Forms/ProductForm';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
+import { formatMoney, formatMeasure } from '@/lib/decimal';
 
 import { Pencil, Eye } from 'lucide-react';
 
@@ -91,21 +92,6 @@ export default function TenantProductsPage() {
     fetchProducts(companyId);
   }, [companyId, currentPage, pageSize, search]);
 
-  const formatAmount = (amount?: number | string) => {
-    if (amount === undefined || amount === null || amount === '') return '';
-    const raw = typeof amount === 'number' ? amount : String(amount).trim();
-    const parsed = typeof raw === 'number' ? raw : Number(String(raw).replace(/,/g, '.'));
-    if (Number.isFinite(parsed)) {
-      const frac = String(parsed).includes('.') ? { minimumFractionDigits: 2, maximumFractionDigits: 8 } : {};
-      try {
-        return parsed.toLocaleString('ru-RU', frac as Intl.NumberFormatOptions);
-      } catch {
-        return String(parsed);
-      }
-    }
-    return String(raw);
-  };
-
   const renderStock = (qty?: number) => {
     if (qty === undefined || qty === null) return '';
     if (Number(qty) === -1) return '∞';
@@ -169,7 +155,7 @@ export default function TenantProductsPage() {
     {
       key: 'price_currency',
       label: 'Цена',
-      render: (r) => [formatAmount(r.price), r.currency].filter(Boolean).join(' '),
+      render: (r) => [formatMoney(r.price), r.currency].filter(Boolean).join(' '),
     },
     {
       key: 'stock_quantity',
@@ -301,13 +287,19 @@ export default function TenantProductsPage() {
                     { label: 'ID', value: selectedProduct.id },
                     { label: 'Название', value: selectedProduct.name },
                     { label: 'Описание', value: selectedProduct.description },
-                    { label: 'Цена', value: `${formatAmount(selectedProduct.price)} ${selectedProduct.currency}` },
+                    {
+                      label: 'Цена',
+                      value: `${formatMoney(selectedProduct.price)} ${selectedProduct.currency}`,
+                    },
                     { label: 'Остаток', value: renderStock(selectedProduct.stock_quantity) },
                     { label: 'Мин. остаток', value: selectedProduct.min_stock_level },
                     { label: 'Ед. изм.', value: selectedProduct.unit },
-                    { label: 'Себестоимость', value: selectedProduct.cost_price ?? '' },
-                    { label: 'Вес, кг', value: selectedProduct.weight ?? '' },
-                    { label: 'Объем, м³', value: selectedProduct.volume ?? '' },
+                    {
+                      label: 'Себестоимость',
+                      value: formatMoney(selectedProduct.cost_price ?? ''),
+                    },
+                    { label: 'Вес, кг', value: formatMeasure(selectedProduct.weight ?? '') },
+                    { label: 'Объем, м³', value: formatMeasure(selectedProduct.volume ?? '') },
                     { label: 'Активен', value: selectedProduct.active ? 'Да' : 'Нет' },
                     { label: 'Создан', value: selectedProduct.created_at ?? '' },
                     { label: 'Обновлен', value: selectedProduct.updated_at ?? '' },

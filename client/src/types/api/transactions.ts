@@ -17,9 +17,9 @@ export interface TransactionCategory {
 
 export interface Transaction {
   id: string;
-  initial_amount: number;
-  discount_amount: number;
-  amount?: number;
+  initial_amount: string;
+  discount_amount: string;
+  amount?: string;
   type: TransactionType;
   method: TransactionMethod;
   date: string;

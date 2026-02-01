@@ -15,6 +15,7 @@ import {
   getCompanyProducts,
 } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
+import { formatMoney } from '@/lib/decimal';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
@@ -139,21 +140,6 @@ export default function TenantTransactionsPage() {
     fetchTransactions(companyId, currentPage, pageSize, globalSearch);
   }, [companyId, currentPage, pageSize, globalSearch]);
 
-  const formatAmount = (amount?: number | string) => {
-    if (amount === undefined || amount === null || amount === '') return '';
-    const raw = typeof amount === 'number' ? amount : String(amount).trim();
-    const parsed = typeof raw === 'number' ? raw : Number(String(raw).replace(/,/g, '.'));
-    if (Number.isFinite(parsed)) {
-      const frac = String(parsed).includes('.') ? { minimumFractionDigits: 2, maximumFractionDigits: 8 } : {};
-      try {
-        return parsed.toLocaleString('ru-RU', frac as Intl.NumberFormatOptions);
-      } catch {
-        return String(parsed);
-      }
-    }
-    return String(raw);
-  };
-
   const formatCategoryNames = (cats?: Transaction['categories']) => {
     if (!cats || cats.length === 0) return '';
     return (cats as Array<string | { id?: string; name?: string }>)
@@ -230,7 +216,7 @@ export default function TenantTransactionsPage() {
       label: 'Сумма',
       render: (r) => {
         const amt = r.initial_amount ?? r.amount ?? '';
-        const formatted = formatAmount(amt);
+        const formatted = formatMoney(amt);
         if (formatted === '') return '';
         const currency = r.currency ?? '';
         const display = [formatted, currency].filter(Boolean).join(' ');
@@ -432,7 +418,8 @@ export default function TenantTransactionsPage() {
                     <strong>Тип:</strong> {selectedTransaction.type}
                   </div>
                   <div>
-                    <strong>Сумма:</strong> {formatAmount(selectedTransaction.initial_amount ?? selectedTransaction.amount)}{' '}
+                    <strong>Сумма:</strong>{' '}
+                    {formatMoney(selectedTransaction.initial_amount ?? selectedTransaction.amount)}{' '}
                     {selectedTransaction.currency}
                   </div>
                   <div>

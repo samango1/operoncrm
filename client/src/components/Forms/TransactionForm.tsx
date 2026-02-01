@@ -11,6 +11,7 @@ import type { Transaction, TransactionCategory } from '@/types/api/transactions'
 import type { Client } from '@/types/api/clients';
 import type { Product } from '@/types/api/products';
 import { createCompanyTransaction, updateCompanyTransaction, getCompanyTransactionCategories } from '@/lib/api';
+import { compareDecimalStrings, formatMoney, isValidDecimal, maskDecimalInput, normalizeDecimalInput, toDecimalString } from '@/lib/decimal';
 
 type Props = {
   companies: Company[];
@@ -34,8 +35,8 @@ export default function TransactionForm({
   const initialCompanyId = defaultCompanyId ? String(defaultCompanyId) : undefined;
   const [companyId, setCompanyId] = useState<string | undefined>(initialCompanyId);
   const [clientId, setClientId] = useState<string | undefined>(undefined);
-  const [initialAmount, setInitialAmount] = useState<number | ''>('');
-  const [discount, setDiscount] = useState<number | ''>('');
+  const [initialAmount, setInitialAmount] = useState<string>('');
+  const [discount, setDiscount] = useState<string>('');
   const [type, setType] = useState<'income' | 'outcome'>('income');
   const [method, setMethod] = useState<'cash' | 'card'>('cash');
   const [currency, setCurrency] = useState<'UZS' | 'USD'>('UZS');
@@ -77,8 +78,8 @@ export default function TransactionForm({
           ? String((transaction.client as Client)?.id ?? undefined)
           : undefined
     );
-    setInitialAmount(transaction.initial_amount ?? transaction.amount ?? '');
-    setDiscount(transaction.discount_amount ?? 0);
+    setInitialAmount(toDecimalString(transaction.initial_amount ?? transaction.amount ?? ''));
+    setDiscount(toDecimalString(transaction.discount_amount ?? '0'));
     setType(transaction.type ?? 'income');
     setMethod(transaction.method ?? 'cash');
     setCurrency(transaction.currency ?? 'UZS');
@@ -122,7 +123,7 @@ export default function TransactionForm({
 
   const productOptions: OptionType<string>[] = filteredProducts.map((p) => ({
     value: String(p.id),
-    label: p.name ? `${p.name}${p.price ? ` (${p.price} ${p.currency ?? ''})` : ''}` : String(p.id),
+    label: p.name ? `${p.name}${p.price ? ` (${formatMoney(p.price)} ${p.currency ?? ''})` : ''}` : String(p.id),
   }));
 
   const fetchCategories = async (company: string) => {
@@ -209,13 +210,28 @@ export default function TransactionForm({
       setError('Выберите компанию');
       return;
     }
-    if (initialAmount === '' || Number(initialAmount) <= 0) {
+    const normalizedInitial = normalizeDecimalInput(initialAmount);
+    if (!isValidDecimal(normalizedInitial, { maxFractionDigits: 2 }) || compareDecimalStrings(normalizedInitial, '0') <= 0) {
       setError('Введите корректную сумму');
       return;
     }
 
-    const payload: Partial<Transaction> & { discount?: number } = {
-      initial_amount: Number(initialAmount),
+    const normalizedDiscount = discount === '' ? '0' : normalizeDecimalInput(discount);
+    if (discount !== '' && !isValidDecimal(normalizedDiscount, { maxFractionDigits: 2 })) {
+      setError('Введите корректную скидку');
+      return;
+    }
+    if (compareDecimalStrings(normalizedDiscount, '0') < 0) {
+      setError('Скидка должна быть не меньше 0');
+      return;
+    }
+    if (compareDecimalStrings(normalizedDiscount, normalizedInitial) > 0) {
+      setError('Скидка не может быть больше суммы');
+      return;
+    }
+
+    const payload: Partial<Transaction> & { discount?: string } = {
+      initial_amount: normalizedInitial,
       type,
       method,
       currency,
@@ -224,7 +240,8 @@ export default function TransactionForm({
       client: clientId || undefined,
       categories: categoryIds,
       products: productIds,
-      discount: Number(discount) || 0,
+      company: companyId ?? undefined,
+      discount: normalizedDiscount,
     };
 
     try {
@@ -315,21 +332,21 @@ export default function TransactionForm({
       <div className='flex gap-3'>
         <InputDefault
           label='Сумма'
-          type='number'
+          type='text'
           value={initialAmount}
-          onChange={(e) => setInitialAmount(e.target.value === '' ? '' : Number(e.target.value))}
+          onChange={(e) => setInitialAmount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
           placeholder='0.00'
-          min={0}
+          inputMode='decimal'
           required
         />
 
         <InputDefault
           label='Скидка'
-          type='number'
+          type='text'
           value={discount}
-          onChange={(e) => setDiscount(e.target.value === '' ? '' : Number(e.target.value))}
+          onChange={(e) => setDiscount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
           placeholder='0.00'
-          min={0}
+          inputMode='decimal'
         />
       </div>
       <InputDefault label='Дата' type='date' value={date} onChange={(e) => setDate(e.target.value)} />

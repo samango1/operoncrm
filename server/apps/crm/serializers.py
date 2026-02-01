@@ -329,11 +329,16 @@ class TransactionSerializer(serializers.ModelSerializer):
         required=False,
     )
 
-    discount = serializers.IntegerField(
-        source="discount_amount", write_only=True, required=False, min_value=0
+    discount = serializers.DecimalField(
+        source="discount_amount",
+        write_only=True,
+        required=False,
+        min_value=0,
+        max_digits=18,
+        decimal_places=2,
     )
 
-    amount = serializers.IntegerField(read_only=True)
+    amount = serializers.DecimalField(read_only=True, max_digits=18, decimal_places=2)
 
     valid = serializers.BooleanField(read_only=True)
 
@@ -384,8 +389,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     def validate_initial_amount(self, value):
         if value is None:
             raise serializers.ValidationError("initial_amount is required.")
-        if value < 0:
-            raise serializers.ValidationError("initial_amount must be non-negative.")
+        if value <= 0:
+            raise serializers.ValidationError("initial_amount must be greater than zero.")
         return value
 
     def validate(self, attrs):
@@ -397,6 +402,8 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         if initial is None:
             raise serializers.ValidationError("initial_amount is required.")
+        if initial <= 0:
+            raise serializers.ValidationError("initial_amount must be greater than zero.")
 
         if discount is None:
             discount = 0

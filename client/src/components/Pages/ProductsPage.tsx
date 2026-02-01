@@ -12,6 +12,7 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SearchInput from '@/components/Inputs/SearchInput';
 import SelectOption from '@/components/Inputs/SelectOption';
 import ProductForm from '@/components/Forms/ProductForm';
+import { formatMoney, formatMeasure } from '@/lib/decimal';
 
 import { Pencil, Eye } from 'lucide-react';
 
@@ -84,21 +85,6 @@ export default function ProductsPage() {
     return companies.find((c) => String(c.id) === String(selectedCompanyId));
   }, [selectedCompanyId, companies]);
 
-  const formatAmount = (amount?: number | string) => {
-    if (amount === undefined || amount === null || amount === '') return '';
-    const raw = typeof amount === 'number' ? amount : String(amount).trim();
-    const parsed = typeof raw === 'number' ? raw : Number(String(raw).replace(/,/g, '.'));
-    if (Number.isFinite(parsed)) {
-      const frac = String(parsed).includes('.') ? { minimumFractionDigits: 2, maximumFractionDigits: 8 } : {};
-      try {
-        return parsed.toLocaleString('ru-RU', frac as Intl.NumberFormatOptions);
-      } catch {
-        return String(parsed);
-      }
-    }
-    return String(raw);
-  };
-
   const renderStock = (qty?: number) => {
     if (qty === undefined || qty === null) return '';
     if (Number(qty) === -1) return '∞';
@@ -154,7 +140,7 @@ export default function ProductsPage() {
       key: 'price_currency',
       label: 'Цена',
       render: (r) => {
-        const formatted = formatAmount(r.price);
+        const formatted = formatMoney(r.price);
         return [formatted, r.currency].filter(Boolean).join(' ');
       },
     },
@@ -361,7 +347,8 @@ export default function ProductsPage() {
                     <strong>Описание:</strong> {selectedProduct.description}
                   </div>
                   <div>
-                    <strong>Цена:</strong> {formatAmount(selectedProduct.price)} {selectedProduct.currency}
+                    <strong>Цена:</strong> {formatMoney(selectedProduct.price)}{' '}
+                    {selectedProduct.currency}
                   </div>
                   <div>
                     <strong>Остаток:</strong> {renderStock(selectedProduct.stock_quantity)}
@@ -373,13 +360,14 @@ export default function ProductsPage() {
                     <strong>Ед. изм.:</strong> {selectedProduct.unit}
                   </div>
                   <div>
-                    <strong>Себестоимость:</strong> {selectedProduct.cost_price ?? ''}
+                    <strong>Себестоимость:</strong>{' '}
+                    {formatMoney(selectedProduct.cost_price ?? '')}
                   </div>
                   <div>
-                    <strong>Вес, кг:</strong> {selectedProduct.weight ?? ''}
+                    <strong>Вес, кг:</strong> {formatMeasure(selectedProduct.weight ?? '')}
                   </div>
                   <div>
-                    <strong>Объем, м³:</strong> {selectedProduct.volume ?? ''}
+                    <strong>Объем, м³:</strong> {formatMeasure(selectedProduct.volume ?? '')}
                   </div>
                   <div>
                     <strong>Активен:</strong> {selectedProduct.active ? 'Да' : 'Нет'}
