@@ -177,6 +177,7 @@ export default function TransactionCategoriesPage() {
   };
 
   const onCreated = async () => {
+    closeCreate();
     if (selectedCompanyId) await fetchCategories(selectedCompanyId, currentPage, pageSize, globalSearch);
   };
 
