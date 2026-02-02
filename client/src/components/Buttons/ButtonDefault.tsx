@@ -3,7 +3,7 @@
 import React, { ButtonHTMLAttributes } from 'react';
 import cn from 'clsx';
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'positive' | 'outline' | 'dark' | 'ghost' | 'navigation';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'positive' | 'outline' | 'dark' | 'ghost' | 'navigation' | 'disabled';
 type ButtonType = 'button' | 'submit' | 'reset';
 
 interface ButtonDefaultProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -11,6 +11,8 @@ interface ButtonDefaultProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   type?: ButtonType;
   className?: string;
 }
+
+const baseClasses = 'px-4 py-2 rounded transition-colors duration-200 focus:outline-none';
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: 'bg-blue-600 hover:bg-blue-700 text-white',
@@ -21,7 +23,11 @@ const variantClasses: Record<ButtonVariant, string> = {
   dark: 'bg-gray-900 hover:bg-gray-800 text-white',
   ghost: 'bg-gray-500 hover:bg-gray-700 text-white',
   navigation: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+  disabled: 'bg-gray-300 text-gray-600',
 };
+
+const disabledClasses = 'cursor-not-allowed';
+const enabledClasses = 'cursor-pointer';
 
 const ButtonDefault: React.FC<ButtonDefaultProps> = ({
   variant = 'primary',
@@ -30,14 +36,12 @@ const ButtonDefault: React.FC<ButtonDefaultProps> = ({
   children,
   ...props
 }) => {
+  const isDisabled = variant === 'disabled' || props.disabled;
+
   return (
     <button
       type={type}
-      className={cn(
-        'px-4 py-2 rounded transition-colors duration-200 cursor-pointer focus:outline-none',
-        variantClasses[variant],
-        className
-      )}
+      className={cn(baseClasses, isDisabled ? disabledClasses : enabledClasses, variantClasses[variant], className)}
       {...props}
     >
       {children}

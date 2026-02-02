@@ -13,6 +13,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
     { path: '/transaction-categories', label: 'Категории', icon: 'categories' },
     { path: '/clients', label: 'Клиенты', icon: 'clients' },
     { path: '/products', label: 'Продукты', icon: 'products' },
+    { path: '/pos', label: 'POS', icon: 'pos' },
   ];
 
   return (

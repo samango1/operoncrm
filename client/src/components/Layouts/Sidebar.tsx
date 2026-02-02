@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Users, Building2, Banknote, Contact, Settings, Tag, Package, type LucideIcon } from 'lucide-react';
+import { Home, Users, Building2, Banknote, Contact, Settings, Tag, Package, Calculator, type LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
@@ -13,7 +13,8 @@ export type SidebarIconKey =
   | 'clients'
   | 'categories'
   | 'products'
-  | 'settings';
+  | 'settings'
+  | 'pos';
 
 export type SidebarItem = {
   path: string;
@@ -35,6 +36,7 @@ const iconMap: Record<SidebarIconKey, LucideIcon> = {
   categories: Tag,
   products: Package,
   settings: Settings,
+  pos: Calculator,
 };
 
 export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {
