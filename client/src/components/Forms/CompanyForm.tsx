@@ -6,6 +6,7 @@ import SelectOption from '@/components/Inputs/SelectOption';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SelectMultiple from '@/components/Inputs/SelectMultiple';
 import OptionalField from '@/components/Inputs/OptionalField';
+import OptionalSection from '@/components/Containers/OptionalSection';
 
 import { getUsers, getUserById, createCompany, updateCompany, deleteCompany } from '@/lib/api';
 import type { User } from '@/types/api/users';
@@ -233,18 +234,6 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
         required
       />
 
-      <InputDefault
-        value={slug}
-        label={
-          <>
-            Slug
-            <OptionalField />
-          </>
-        }
-        onChange={(e) => setSlug(e.target.value)}
-        placeholder='slug (будет использован в URL)'
-      />
-
       <SelectOption
         value={plan}
         label='План'
@@ -256,19 +245,33 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
         placeholder='Выберите план'
       />
 
-      <SelectMultiple
-        label={
-          <>
-            Члены компании
-            <OptionalField />
-          </>
-        }
-        options={userOptions}
-        value={members}
-        onChange={handleMembersChange}
-        placeholder={loadingUsers ? 'Загрузка пользователей...' : 'Выберите пользователя'}
-        disabled={loadingUsers || updatingMembers || saving}
-      />
+      <OptionalSection>
+        <InputDefault
+          value={slug}
+          label={
+            <>
+              Slug
+              <OptionalField />
+            </>
+          }
+          onChange={(e) => setSlug(e.target.value)}
+          placeholder='slug (будет использован в URL)'
+        />
+
+        <SelectMultiple
+          label={
+            <>
+              Члены компании
+              <OptionalField />
+            </>
+          }
+          options={userOptions}
+          value={members}
+          onChange={handleMembersChange}
+          placeholder={loadingUsers ? 'Загрузка пользователей...' : 'Выберите пользователя'}
+          disabled={loadingUsers || updatingMembers || saving}
+        />
+      </OptionalSection>
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
 

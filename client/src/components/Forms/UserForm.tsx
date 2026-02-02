@@ -5,6 +5,7 @@ import InputDefault from '@/components/Inputs/InputDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SelectOption from '../Inputs/SelectOption';
 import OptionalField from '@/components/Inputs/OptionalField';
+import OptionalSection from '@/components/Containers/OptionalSection';
 
 import { User, PlatformRole } from '@/types/api/users';
 import { createUser, updateUser, deleteUser } from '@/lib/api';
@@ -176,20 +177,34 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
         required
       />
 
-      <InputDefault
-        label={
-          <>
-            Пароль
-            {user ? <OptionalField /> : null}
-          </>
-        }
-        name='password'
-        type='password'
-        value={form.password}
-        onChange={(e) => handleChange('password')(e)}
-        placeholder={user ? 'Оставьте пустым чтобы не менять' : 'Введите пароль'}
-        error={fieldErrors.password}
-      />
+      {user ? (
+        <OptionalSection>
+          <InputDefault
+            label={
+              <>
+                Пароль
+                <OptionalField />
+              </>
+            }
+            name='password'
+            type='password'
+            value={form.password}
+            onChange={(e) => handleChange('password')(e)}
+            placeholder='Оставьте пустым чтобы не менять'
+            error={fieldErrors.password}
+          />
+        </OptionalSection>
+      ) : (
+        <InputDefault
+          label='Пароль'
+          name='password'
+          type='password'
+          value={form.password}
+          onChange={(e) => handleChange('password')(e)}
+          placeholder='Введите пароль'
+          error={fieldErrors.password}
+        />
+      )}
 
       <div className='flex justify-between'>
         <div>

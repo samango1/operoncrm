@@ -6,6 +6,7 @@ import SelectOption from '@/components/Inputs/SelectOption';
 import TextAreaDefault from '@/components/Inputs/TextAreaDefault';
 import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 import OptionalField from '@/components/Inputs/OptionalField';
+import OptionalSection from '@/components/Containers/OptionalSection';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Product, ProductCurrency, ProductUnit } from '@/types/api/products';
 import type { Company } from '@/types/api/companies';
@@ -339,44 +340,46 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
         <SelectOption label='Ед. измерения' options={unitOptions} value={unit} onChange={(v) => setUnit(v as ProductUnit)} />
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3'>
-        <InputDefault
-          label={
-            <>
-              Себестоимость
-              <OptionalField />
-            </>
-          }
-          type='text'
-          value={costPrice}
-          onChange={(e) => setCostPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
-          inputMode='decimal'
-        />
-        <InputDefault
-          label={
-            <>
-              Вес, кг
-              <OptionalField />
-            </>
-          }
-          type='text'
-          value={weight}
-          onChange={(e) => setWeight(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
-          inputMode='decimal'
-        />
-        <InputDefault
-          label={
-            <>
-              Объем, м³
-              <OptionalField />
-            </>
-          }
-          type='text'
-          value={volume}
-          onChange={(e) => setVolume(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
-          inputMode='decimal'
-        />
-      </div>
+      <OptionalSection>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3'>
+          <InputDefault
+            label={
+              <>
+                Себестоимость
+                <OptionalField />
+              </>
+            }
+            type='text'
+            value={costPrice}
+            onChange={(e) => setCostPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+            inputMode='decimal'
+          />
+          <InputDefault
+            label={
+              <>
+                Вес, кг
+                <OptionalField />
+              </>
+            }
+            type='text'
+            value={weight}
+            onChange={(e) => setWeight(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
+            inputMode='decimal'
+          />
+          <InputDefault
+            label={
+              <>
+                Объем, м³
+                <OptionalField />
+              </>
+            }
+            type='text'
+            value={volume}
+            onChange={(e) => setVolume(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
+            inputMode='decimal'
+          />
+        </div>
+      </OptionalSection>
       <div className='flex items-end'>
         <ToggleSwitch checked={active} onChange={setActive} onLabel='Доступен' offLabel='Недоступен' />
       </div>

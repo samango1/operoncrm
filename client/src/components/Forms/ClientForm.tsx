@@ -6,6 +6,7 @@ import SelectOption from '@/components/Inputs/SelectOption';
 import TextAreaDefault from '../Inputs/TextAreaDefault';
 import OptionalField from '@/components/Inputs/OptionalField';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
+import OptionalSection from '@/components/Containers/OptionalSection';
 import {
   createClient,
   updateClient,
@@ -206,16 +207,18 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         />
       )}
 
-      <TextAreaDefault
-        label={
-          <>
-            Описание
-            <OptionalField />
-          </>
-        }
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
+      <OptionalSection>
+        <TextAreaDefault
+          label={
+            <>
+              Описание
+              <OptionalField />
+            </>
+          }
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </OptionalSection>
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
 
