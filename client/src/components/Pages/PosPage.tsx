@@ -400,7 +400,7 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
     <div className='space-y-6'>
       <section className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
         <div>
-          <h1 className='text-2xl font-semibold'>POS продажа</h1>
+          <h1 className='text-2xl font-semibold'>Продажа продукции</h1>
           <p className='text-sm text-gray-500'>
             {companyId ? `Компания: ${resolveCompanyLabel(selectedCompany, companyId)}` : 'Выберите компанию для начала'}
           </p>
