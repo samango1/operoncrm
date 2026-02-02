@@ -7,6 +7,7 @@ import TextAreaDefault from '../Inputs/TextAreaDefault';
 import OptionalField from '@/components/Inputs/OptionalField';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import OptionalSection from '@/components/Containers/OptionalSection';
+import { preferenceIds } from '@/lib/preferencesCookies';
 import {
   createClient,
   updateClient,
@@ -207,7 +208,7 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         />
       )}
 
-      <OptionalSection>
+      <OptionalSection preferenceId={preferenceIds.optionalSection.clientFormExtra}>
         <TextAreaDefault
           label={
             <>

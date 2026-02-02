@@ -7,6 +7,7 @@ import TextAreaDefault from '@/components/Inputs/TextAreaDefault';
 import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 import OptionalField from '@/components/Inputs/OptionalField';
 import OptionalSection from '@/components/Containers/OptionalSection';
+import { preferenceIds } from '@/lib/preferencesCookies';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Product, ProductCurrency, ProductUnit } from '@/types/api/products';
 import type { Company } from '@/types/api/companies';
@@ -340,7 +341,7 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
         <SelectOption label='Ед. измерения' options={unitOptions} value={unit} onChange={(v) => setUnit(v as ProductUnit)} />
       </div>
 
-      <OptionalSection>
+      <OptionalSection preferenceId={preferenceIds.optionalSection.productFormExtra}>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3'>
           <InputDefault
             label={

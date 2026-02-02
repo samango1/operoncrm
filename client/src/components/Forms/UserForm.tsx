@@ -6,6 +6,7 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SelectOption from '../Inputs/SelectOption';
 import OptionalField from '@/components/Inputs/OptionalField';
 import OptionalSection from '@/components/Containers/OptionalSection';
+import { preferenceIds } from '@/lib/preferencesCookies';
 
 import { User, PlatformRole } from '@/types/api/users';
 import { createUser, updateUser, deleteUser } from '@/lib/api';
@@ -178,7 +179,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
       />
 
       {user ? (
-        <OptionalSection>
+        <OptionalSection preferenceId={preferenceIds.optionalSection.userFormPassword}>
           <InputDefault
             label={
               <>

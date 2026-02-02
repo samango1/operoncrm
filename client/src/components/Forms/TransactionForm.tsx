@@ -7,7 +7,8 @@ import SelectOption, { SelectOption as OptionType } from '@/components/Inputs/Se
 import SelectMultiple from '@/components/Inputs/SelectMultiple';
 import OptionalField from '@/components/Inputs/OptionalField';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
-import ToggleBadge from '@/components/Buttons/ToggleBadge';
+import ToggleBadgeGroup from '@/components/Buttons/ToggleBadgeGroup';
+import { preferencesKeys } from '@/lib/preferencesCookies';
 import type { Company } from '@/types/api/companies';
 import type { Transaction, TransactionCategory } from '@/types/api/transactions';
 import type { Client } from '@/types/api/clients';
@@ -65,7 +66,6 @@ export default function TransactionForm({
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const prevCompanyIdRef = useRef<string | undefined>(undefined);
-  const [openExtra, setOpenExtra] = useState<'client' | 'details' | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -387,99 +387,96 @@ export default function TransactionForm({
         />
       </div>
 
-      <div className='flex flex-wrap gap-3 text-sm'>
-        <ToggleBadge
-          active={openExtra === 'client'}
-          onClick={() => setOpenExtra((prev) => (prev === 'client' ? null : 'client'))}
-        >
-          Клиент и товары
-        </ToggleBadge>
-        <ToggleBadge
-          active={openExtra === 'details'}
-          onClick={() => setOpenExtra((prev) => (prev === 'details' ? null : 'details'))}
-        >
-          Скидка и детали
-        </ToggleBadge>
-      </div>
+      <ToggleBadgeGroup
+        storageKey={preferencesKeys.transactionExtra}
+        items={[
+          { id: 'client', label: 'Клиент и товары' },
+          { id: 'details', label: 'Скидка и детали' },
+        ]}
+      >
+        {(openExtra) => (
+          <>
+            {openExtra === 'client' && (
+              <div className='mt-3 space-y-3'>
+                <SelectOption
+                  label={
+                    <>
+                      Клиент
+                      <OptionalField />
+                    </>
+                  }
+                  placeholder={clientPlaceholder}
+                  options={clientOptions}
+                  value={clientId}
+                  onChange={(v) => setClientId(v as string | undefined)}
+                />
 
-      {openExtra === 'client' && (
-        <div className='space-y-3'>
-          <SelectOption
-            label={
-              <>
-                Клиент
-                <OptionalField />
-              </>
-            }
-            placeholder={clientPlaceholder}
-            options={clientOptions}
-            value={clientId}
-            onChange={(v) => setClientId(v as string | undefined)}
-          />
+                <SelectMultiple
+                  label={
+                    <>
+                      Категории
+                      <OptionalField />
+                    </>
+                  }
+                  placeholder={categoryPlaceholder}
+                  options={categoryOptions}
+                  value={categoryIds}
+                  onChange={(vals) => setCategoryIds(vals as string[])}
+                  disabled={!companyId || categoriesLoading}
+                />
 
-          <SelectMultiple
-            label={
-              <>
-                Категории
-                <OptionalField />
-              </>
-            }
-            placeholder={categoryPlaceholder}
-            options={categoryOptions}
-            value={categoryIds}
-            onChange={(vals) => setCategoryIds(vals as string[])}
-            disabled={!companyId || categoriesLoading}
-          />
+                <SelectMultiple
+                  label={
+                    <>
+                      Продукты
+                      <OptionalField />
+                    </>
+                  }
+                  placeholder={productPlaceholder}
+                  options={productOptions}
+                  value={productIds}
+                  onChange={(vals) => setProductIds(vals as string[])}
+                  disabled={!companyId}
+                />
+              </div>
+            )}
 
-          <SelectMultiple
-            label={
-              <>
-                Продукты
-                <OptionalField />
-              </>
-            }
-            placeholder={productPlaceholder}
-            options={productOptions}
-            value={productIds}
-            onChange={(vals) => setProductIds(vals as string[])}
-            disabled={!companyId}
-          />
-        </div>
-      )}
+            {openExtra === 'details' && (
+              <div className='mt-3 space-y-3'>
+                <InputDefault
+                  label={
+                    <>
+                      Скидка
+                      <OptionalField />
+                    </>
+                  }
+                  type='text'
+                  value={discount}
+                  onChange={(e) => setDiscount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+                  placeholder='0.00'
+                  inputMode='decimal'
+                />
 
-      {openExtra === 'details' && (
-        <div className='space-y-3'>
-          <InputDefault
-            label={
-              <>
-                Скидка
-                <OptionalField />
-              </>
-            }
-            type='text'
-            value={discount}
-            onChange={(e) => setDiscount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
-            placeholder='0.00'
-            inputMode='decimal'
-          />
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                  <InputDefault label='Дата' type='date' value={date} onChange={(e) => setDate(e.target.value)} />
+                  <InputDefault label='Время' type='time' value={time} onChange={(e) => setTime(e.target.value)} step={60} />
+                </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-            <InputDefault label='Дата' type='date' value={date} onChange={(e) => setDate(e.target.value)} />
-            <InputDefault label='Время' type='time' value={time} onChange={(e) => setTime(e.target.value)} step={60} />
-          </div>
-
-          <TextAreaDefault
-            label={
-              <>
-                Описание
-                <OptionalField />
-              </>
-            }
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-      )}
+                <TextAreaDefault
+                  label={
+                    <>
+                      Описание
+                      <OptionalField />
+                    </>
+                  }
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </ToggleBadgeGroup>
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
 

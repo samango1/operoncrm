@@ -7,6 +7,7 @@ import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SelectMultiple from '@/components/Inputs/SelectMultiple';
 import OptionalField from '@/components/Inputs/OptionalField';
 import OptionalSection from '@/components/Containers/OptionalSection';
+import { preferenceIds } from '@/lib/preferencesCookies';
 
 import { getUsers, getUserById, createCompany, updateCompany, deleteCompany } from '@/lib/api';
 import type { User } from '@/types/api/users';
@@ -245,7 +246,7 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
         placeholder='Выберите план'
       />
 
-      <OptionalSection>
+      <OptionalSection preferenceId={preferenceIds.optionalSection.companyFormExtra}>
         <InputDefault
           value={slug}
           label={
