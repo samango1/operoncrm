@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Product } from '@/types/api/products';
 import type { Company } from '@/types/api/companies';
-import { getCompanies, getCompanyProducts, getCompanyProductById } from '@/lib/api';
+import { getCompanies, getCompanyBySlug, getCompanyProducts, getCompanyProductById } from '@/lib/api';
 
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
@@ -16,9 +16,15 @@ import { formatMoney, formatMeasure } from '@/lib/decimal';
 
 import { Pencil, Eye } from 'lucide-react';
 
-export default function ProductsPage() {
+type ProductsPageProps = {
+  tenantSlug?: string;
+};
+
+export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [tenantCompany, setTenantCompany] = useState<Company | null>(null);
+  const [companyLoading, setCompanyLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +41,8 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  const isTenantMode = Boolean(tenantSlug);
 
   const fetchCompanies = async () => {
     try {
@@ -68,8 +76,32 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
+    if (isTenantMode) return;
     fetchCompanies();
-  }, []);
+  }, [isTenantMode]);
+
+  useEffect(() => {
+    if (!tenantSlug) return;
+    const fetchTenantCompany = async () => {
+      setCompanyLoading(true);
+      setError(null);
+      setTenantCompany(null);
+      setSelectedCompanyId(undefined);
+      try {
+        const companyRes = await getCompanyBySlug(tenantSlug);
+        setTenantCompany(companyRes as Company);
+        setSelectedCompanyId(companyRes?.id ? String(companyRes.id) : undefined);
+      } catch (err) {
+        console.error('getCompanyBySlug error:', err);
+        setError('Не удалось загрузить компанию');
+        setTenantCompany(null);
+        setSelectedCompanyId(undefined);
+      } finally {
+        setCompanyLoading(false);
+      }
+    };
+    fetchTenantCompany();
+  }, [tenantSlug]);
 
   useEffect(() => {
     if (selectedCompanyId) {
@@ -81,9 +113,10 @@ export default function ProductsPage() {
   }, [selectedCompanyId, currentPage, pageSize, globalSearch]);
 
   const selectedCompany = useMemo(() => {
+    if (isTenantMode) return tenantCompany ?? undefined;
     if (!selectedCompanyId) return undefined;
     return companies.find((c) => String(c.id) === String(selectedCompanyId));
-  }, [selectedCompanyId, companies]);
+  }, [isTenantMode, tenantCompany, selectedCompanyId, companies]);
 
   const renderStock = (qty?: number) => {
     if (qty === undefined || qty === null) return '';
@@ -219,14 +252,22 @@ export default function ProductsPage() {
     }));
   }, [companies]);
 
+  const headerSubtitle = isTenantMode
+    ? companyLoading
+      ? 'Загрузка...'
+      : tenantCompany
+        ? `Всего продуктов: ${totalCount}`
+        : 'Не удалось определить компанию'
+    : selectedCompanyId
+      ? `Всего продуктов: ${totalCount}`
+      : 'Выберите компанию для просмотра продуктов';
+
   return (
     <>
       <section className='mb-6 flex justify-between items-center'>
         <div>
           <h1 className='text-2xl font-semibold'>Продукты</h1>
-          <p className='text-sm text-gray-500'>
-            {selectedCompanyId ? `Всего продуктов: ${totalCount}` : 'Выберите компанию для просмотра продуктов'}
-          </p>
+          <p className='text-sm text-gray-500'>{headerSubtitle}</p>
         </div>
 
         <ButtonDefault
@@ -234,7 +275,7 @@ export default function ProductsPage() {
           variant='positive'
           onClick={() => {
             if (!selectedCompanyId) {
-              alert('Сначала выберите компанию');
+              alert(isTenantMode ? 'Компания не найдена' : 'Сначала выберите компанию');
               return;
             }
             openCreate();
@@ -245,21 +286,23 @@ export default function ProductsPage() {
       </section>
 
       <div className='mb-4 space-y-4'>
-        <div>
-          <SelectOption
-            label='Компания'
-            placeholder='Выберите компанию'
-            options={companyOptions}
-            value={selectedCompanyId}
-            onChange={(value) => {
-              setSelectedCompanyId(value);
-              setCurrentPage(1);
-              setGlobalSearch('');
-            }}
-          />
-        </div>
+        {!isTenantMode && (
+          <div>
+            <SelectOption
+              label='Компания'
+              placeholder='Выберите компанию'
+              options={companyOptions}
+              value={selectedCompanyId}
+              onChange={(value) => {
+                setSelectedCompanyId(value);
+                setCurrentPage(1);
+                setGlobalSearch('');
+              }}
+            />
+          </div>
+        )}
 
-        {selectedCompanyId && (
+        {(isTenantMode || selectedCompanyId) && (
           <div className='flex items-center justify-between gap-4'>
             <SearchInput initialValue={globalSearch} onSearch={handleSearch} placeholder='Поиск по названию и описанию' />
           </div>
@@ -269,7 +312,9 @@ export default function ProductsPage() {
       {error && <div className='text-red-600 mb-4'>{error}</div>}
 
       {!selectedCompanyId ? (
-        <div className='text-gray-600 p-6 bg-white/5 rounded'>Выберите компанию для просмотра продуктов</div>
+        <div className='text-gray-600 p-6 bg-white/5 rounded'>
+          {isTenantMode ? 'Компания не найдена' : 'Выберите компанию для просмотра продуктов'}
+        </div>
       ) : loading ? (
         <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
       ) : products.length === 0 ? (
@@ -278,12 +323,14 @@ export default function ProductsPage() {
         </div>
       ) : (
         <section className='space-y-4'>
-          <div className='flex justify-between items-center mb-3'>
-            <div>
-              <h2 className='text-lg font-medium'>{selectedCompany?.name || `Компания ${selectedCompanyId}`}</h2>
-              <div className='text-sm text-gray-500'>Продуктов: {totalCount}</div>
+          {!isTenantMode && (
+            <div className='flex justify-between items-center mb-3'>
+              <div>
+                <h2 className='text-lg font-medium'>{selectedCompany?.name || `Компания ${selectedCompanyId}`}</h2>
+                <div className='text-sm text-gray-500'>Продуктов: {totalCount}</div>
+              </div>
             </div>
-          </div>
+          )}
 
           <TableDefault<Product> columns={columns} data={products} className='bg-transparent' />
 

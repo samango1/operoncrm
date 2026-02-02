@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { getClients, getClientById, getCompanies, getCompanyClientById, getCompanyClients } from '@/lib/api';
+import { getClients, getClientById, getCompanies, getCompanyBySlug, getCompanyClientById, getCompanyClients } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
 import { getPlatformRoleFromCookie } from '@/lib/role';
 import type { Client } from '@/types/api/clients';
@@ -20,9 +20,15 @@ import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 import { Pencil, Eye, Funnel } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-export default function ClientsPage() {
+type ClientsPageProps = {
+  tenantSlug?: string;
+};
+
+export default function ClientsPage({ tenantSlug }: ClientsPageProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [tenantCompany, setTenantCompany] = useState<Company | null>(null);
+  const [companyLoading, setCompanyLoading] = useState(false);
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,15 +51,17 @@ export default function ClientsPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const isTenantMode = Boolean(tenantSlug);
+
   useEffect(() => {
     const resolvedRole = getPlatformRoleFromCookie();
     setRole(resolvedRole);
   }, []);
 
-  const isScopedByCompany = useMemo(() => role === 'admin' || role === 'agent', [role]);
+  const isScopedByCompany = useMemo(() => isTenantMode || role === 'admin' || role === 'agent', [isTenantMode, role]);
 
   useEffect(() => {
-    if (!isScopedByCompany) return;
+    if (!isScopedByCompany || isTenantMode) return;
     const fetchCompanies = async () => {
       try {
         const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
@@ -64,9 +72,39 @@ export default function ClientsPage() {
       }
     };
     fetchCompanies();
-  }, [isScopedByCompany]);
+  }, [isScopedByCompany, isTenantMode]);
 
   useEffect(() => {
+    if (!tenantSlug) return;
+    const fetchTenantCompany = async () => {
+      setCompanyLoading(true);
+      setError(null);
+      setTenantCompany(null);
+      setSelectedCompanyId(undefined);
+      setCompanies([]);
+      try {
+        const companyRes = await getCompanyBySlug(tenantSlug);
+        setTenantCompany(companyRes as Company);
+        setSelectedCompanyId(companyRes?.id ? String(companyRes.id) : undefined);
+        setCompanies(companyRes ? [companyRes as Company] : []);
+      } catch (err) {
+        console.error('getCompanyBySlug error:', err);
+        setError('Не удалось загрузить компанию');
+        setTenantCompany(null);
+        setSelectedCompanyId(undefined);
+        setCompanies([]);
+      } finally {
+        setCompanyLoading(false);
+      }
+    };
+    fetchTenantCompany();
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    if (isTenantMode) {
+      setValidOnly(null);
+      return;
+    }
     const s = searchParams?.get('search') ?? '';
     const p = parseInt(searchParams?.get('page') ?? '', 10) || 1;
     const ps = parseInt(searchParams?.get('page_size') ?? '', 10) || 10;
@@ -81,9 +119,9 @@ export default function ClientsPage() {
     } else {
       setValidOnly(vParsed ?? true);
     }
-  }, [searchParams?.toString(), role]);
+  }, [searchParams?.toString(), role, isTenantMode]);
 
-  const showValidSwitch = useMemo(() => role === 'admin' || role === 'agent', [role]);
+  const showValidSwitch = useMemo(() => !isTenantMode && (role === 'admin' || role === 'agent'), [isTenantMode, role]);
 
   const fetchClients = async (page = currentPage, ps = pageSize, q = search, valid = validOnly) => {
     setError(null);
@@ -156,7 +194,7 @@ export default function ClientsPage() {
 
   const openCreateModal = () => {
     if (isScopedByCompany && !selectedCompanyId) {
-      alert('Сначала выберите компанию');
+      alert(isTenantMode ? 'Компания не найдена' : 'Сначала выберите компанию');
       return;
     }
     setSelectedClient(null);
@@ -229,6 +267,7 @@ export default function ClientsPage() {
   };
 
   const updateUrl = (opts: { page?: number; page_size?: number; search?: string; valid?: boolean | null }) => {
+    if (isTenantMode) return;
     try {
       const params = new URLSearchParams(window.location.search);
 
@@ -279,29 +318,36 @@ export default function ClientsPage() {
   }, [companies]);
 
   const noCompanySelected = isScopedByCompany && !selectedCompanyId;
+  const headerSubtitle = isTenantMode
+    ? companyLoading
+      ? 'Загрузка компании...'
+      : selectedCompanyId
+        ? `Всего: ${count}`
+        : 'Компания не найдена'
+    : isScopedByCompany
+      ? selectedCompanyId
+        ? `Всего клиентов: ${count}`
+        : 'Выберите компанию для просмотра клиентов'
+      : `Всего: ${count}`;
+  const disableCreate = isTenantMode && noCompanySelected;
+  const companiesOverride = isTenantMode ? (tenantCompany ? [tenantCompany] : []) : isScopedByCompany ? companies : undefined;
 
   return (
     <>
       <section className='mb-6 flex justify-between'>
         <div>
           <h1 className='text-2xl font-semibold'>Клиенты</h1>
-          <p className='text-sm text-gray-500'>
-            {isScopedByCompany
-              ? selectedCompanyId
-                ? `Всего клиентов: ${count}`
-                : 'Выберите компанию для просмотра клиентов'
-              : `Всего: ${count}`}
-          </p>
+          <p className='text-sm text-gray-500'>{headerSubtitle}</p>
         </div>
         <div className='content-center'>
-          <ButtonDefault onClick={openCreateModal} variant='positive'>
+          <ButtonDefault onClick={openCreateModal} variant='positive' disabled={disableCreate}>
             Добавить
           </ButtonDefault>
         </div>
       </section>
 
       <div className='mb-4 space-y-4'>
-        {isScopedByCompany && (
+        {!isTenantMode && isScopedByCompany && (
           <SelectOption
             label='Компания'
             placeholder='Выберите компанию'
@@ -319,19 +365,21 @@ export default function ClientsPage() {
         {!noCompanySelected && (
           <div className='flex items-center justify-between gap-4'>
             <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по имени, телефону, типу, описанию' />
-            <ButtonDefault
-              type='button'
-              onClick={() => setShowFilters((v) => !v)}
-              aria-label='Показать фильтры'
-              variant={showFilters ? 'positive' : 'outline'}
-            >
-              <Funnel />
-            </ButtonDefault>
+            {!isTenantMode && (
+              <ButtonDefault
+                type='button'
+                onClick={() => setShowFilters((v) => !v)}
+                aria-label='Показать фильтры'
+                variant={showFilters ? 'positive' : 'outline'}
+              >
+                <Funnel />
+              </ButtonDefault>
+            )}
           </div>
         )}
       </div>
 
-      {!noCompanySelected && showFilters && (
+      {!isTenantMode && !noCompanySelected && showFilters && (
         <div className='mb-4 rounded-lg border border-gray-200 bg-white/60 p-3'>
           {showValidSwitch && validOnly !== null && (
             <ToggleSwitch
@@ -353,7 +401,9 @@ export default function ClientsPage() {
 
       <div className='mb-4'>
         {noCompanySelected ? (
-          <div className='text-gray-600 p-6 bg-white/5 rounded'>Выберите компанию для просмотра клиентов</div>
+          <div className='text-gray-600 p-6 bg-white/5 rounded'>
+            {isTenantMode ? 'Компания не найдена' : 'Выберите компанию для просмотра клиентов'}
+          </div>
         ) : loading ? (
           <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
         ) : clients.length === 0 ? (
@@ -392,7 +442,7 @@ export default function ClientsPage() {
                 <ClientForm
                   client={selectedClient}
                   fixedCompanyId={isScopedByCompany ? selectedCompanyId : undefined}
-                  companiesOverride={isScopedByCompany ? companies : undefined}
+                  companiesOverride={companiesOverride}
                   onCancel={closeModal}
                   onSuccess={async () => {
                     closeModal();
