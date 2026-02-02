@@ -223,7 +223,7 @@ export default function TenantTransactionsPage() {
         const isIncome = r.type === 'income';
         const sign = isIncome ? '+' : '-';
         const colorClass = isIncome ? 'text-green-600' : 'text-red-600';
-        return <span className={`font-medium ${colorClass}`}>{`${sign}${display}`}</span>;
+        return <span className={`font-bold ${colorClass}`}>{`${sign}${display}`}</span>;
       },
     },
     {
