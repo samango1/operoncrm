@@ -401,72 +401,67 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
       <section className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
         <div>
           <h1 className='text-2xl font-semibold'>Продажа продукции</h1>
-          <p className='text-sm text-gray-500'>
-            {companyId ? `Компания: ${resolveCompanyLabel(selectedCompany, companyId)}` : 'Выберите компанию для начала'}
-          </p>
         </div>
       </section>
 
       <section className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]'>
         <div className='space-y-4'>
-          <div className='flex flex-col gap-4 md:flex-row'>
-            {!isTenantMode && (
-              <div className={panelClasses + ' p-4 md:w-[320px] md:shrink-0'}>
-                <SelectOption
-                  label='Компания'
-                  placeholder={companyLoading ? 'Загрузка...' : 'Выберите компанию'}
-                  options={companyOptions}
-                  value={companyId}
-                  onChange={(value) => {
-                    setCompanyId(value);
-                    setCurrentPage(1);
-                    setSearch('');
-                  }}
-                  disabled={companyLoading}
-                />
-                {companyError && <div className='mt-2 text-sm text-red-600'>{companyError}</div>}
+          {!isTenantMode && (
+            <div className={panelClasses + ' p-4'}>
+              <SelectOption
+                label='Компания'
+                placeholder={companyLoading ? 'Загрузка...' : 'Выберите компанию'}
+                options={companyOptions}
+                value={companyId}
+                onChange={(value) => {
+                  setCompanyId(value);
+                  setCurrentPage(1);
+                  setSearch('');
+                }}
+                disabled={companyLoading}
+              />
+              {companyError && <div className='mt-2 text-sm text-red-600'>{companyError}</div>}
+            </div>
+          )}
+
+          <div className={panelClasses + ' p-4'}>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <div className='text-xs text-gray-500'>
+                {companyId ? `Показано ${filteredProducts.length} из ${productsCount}` : 'Компания не выбрана'}
+              </div>
+              <div className='text-xs text-gray-500'>{companyId ? `Страница ${currentPage}` : 'Выберите компанию'}</div>
+            </div>
+            <div className='mt-3 flex items-center justify-between gap-4'>
+              <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по названию или описанию' />
+              <ButtonDefault
+                type='button'
+                onClick={() => setShowFilters((prev) => !prev)}
+                aria-label='Показать фильтры'
+                variant={showFilters ? 'positive' : 'outline'}
+              >
+                <Funnel />
+              </ButtonDefault>
+            </div>
+            {showFilters && (
+              <div className='mt-3 rounded-lg border border-gray-200 bg-white/60 p-3'>
+                <div className='flex flex-wrap items-center gap-4'>
+                  <ToggleSwitch
+                    checked={activeOnly}
+                    onChange={setActiveOnly}
+                    label='Статус'
+                    onLabel='Только активные'
+                    offLabel='Все продукты'
+                  />
+                  <ToggleSwitch
+                    checked={inStockOnly}
+                    onChange={setInStockOnly}
+                    label='Остаток'
+                    onLabel='В наличии'
+                    offLabel='Все остатки'
+                  />
+                </div>
               </div>
             )}
-
-            <div className={panelClasses + ' p-4 flex-1'}>
-              <div className='flex flex-wrap items-center justify-between gap-3'>
-                <div className='text-xs text-gray-500'>
-                  {companyId ? `Показано ${filteredProducts.length} из ${productsCount}` : 'Компания не выбрана'}
-                </div>
-                <div className='text-xs text-gray-500'>{companyId ? `Страница ${currentPage}` : 'Выберите компанию'}</div>
-              </div>
-              <div className='mt-3 flex items-center justify-between gap-4'>
-                <SearchInput initialValue={search} onSearch={handleSearch} placeholder='Поиск по названию или описанию' />
-                <ButtonDefault
-                  type='button'
-                  onClick={() => setShowFilters((prev) => !prev)}
-                  aria-label='Показать фильтры'
-                  variant={showFilters ? 'positive' : 'outline'}
-                >
-                  <Funnel />
-                </ButtonDefault>
-              </div>
-              {showFilters && (
-                <div className='mt-3 rounded-lg border border-gray-200 bg-white/60 p-3'>
-                  <div className='flex flex-wrap items-center gap-4'>
-                    <ToggleSwitch
-                      checked={activeOnly}
-                      onChange={setActiveOnly}
-                      label='Статус'
-                      onLabel='Только активные'
-                      offLabel='Все продукты'
-                    />
-                    <ToggleSwitch
-                      checked={inStockOnly}
-                      onChange={setInStockOnly}
-                      label='Остаток'
-                      onLabel='В наличии'
-                      offLabel='Все остатки'
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
           {error && <div className='text-red-600'>{error}</div>}
