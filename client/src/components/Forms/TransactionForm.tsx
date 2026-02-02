@@ -5,6 +5,7 @@ import InputDefault from '@/components/Inputs/InputDefault';
 import TextAreaDefault from '../Inputs/TextAreaDefault';
 import SelectOption, { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
 import SelectMultiple from '@/components/Inputs/SelectMultiple';
+import OptionalField from '@/components/Inputs/OptionalField';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Company } from '@/types/api/companies';
 import type { Transaction, TransactionCategory } from '@/types/api/transactions';
@@ -352,7 +353,12 @@ export default function TransactionForm({
       )}
 
       <SelectOption
-        label='Клиент (опционально)'
+        label={
+          <>
+            Клиент
+            <OptionalField />
+          </>
+        }
         placeholder={clientPlaceholder}
         options={clientOptions}
         value={clientId}
@@ -360,7 +366,12 @@ export default function TransactionForm({
       />
 
       <SelectMultiple
-        label='Категории (опционально)'
+        label={
+          <>
+            Категории
+            <OptionalField />
+          </>
+        }
         placeholder={categoryPlaceholder}
         options={categoryOptions}
         value={categoryIds}
@@ -369,7 +380,12 @@ export default function TransactionForm({
       />
 
       <SelectMultiple
-        label='Продукты (опционально)'
+        label={
+          <>
+            Продукты
+            <OptionalField />
+          </>
+        }
         placeholder={productPlaceholder}
         options={productOptions}
         value={productIds}
@@ -389,7 +405,12 @@ export default function TransactionForm({
         />
 
         <InputDefault
-          label='Скидка'
+          label={
+            <>
+              Скидка
+              <OptionalField />
+            </>
+          }
           type='text'
           value={discount}
           onChange={(e) => setDiscount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
@@ -425,10 +446,16 @@ export default function TransactionForm({
         />
       </div>
 
-      <div>
-        <label className='mb-1 block text-md font-medium text-gray-700'>Описание</label>
-        <TextAreaDefault value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+      <TextAreaDefault
+        label={
+          <>
+            Описание
+            <OptionalField />
+          </>
+        }
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
 

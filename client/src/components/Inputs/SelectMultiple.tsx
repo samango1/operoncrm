@@ -9,7 +9,7 @@ interface SelectMultipleProps<T extends string | number> extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
   'onChange' | 'value'
 > {
-  label?: string;
+  label?: React.ReactNode;
   placeholder?: string;
   error?: string;
   options: OptionType<T>[];

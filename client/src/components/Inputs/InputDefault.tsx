@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { LucideIcon } from 'lucide-react';
 
 interface InputDefaultProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label?: React.ReactNode;
   icon?: LucideIcon;
   placeholder?: string;
   error?: string;

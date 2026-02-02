@@ -5,6 +5,7 @@ import InputDefault from '@/components/Inputs/InputDefault';
 import SelectOption from '@/components/Inputs/SelectOption';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SelectMultiple from '@/components/Inputs/SelectMultiple';
+import OptionalField from '@/components/Inputs/OptionalField';
 
 import { getUsers, getUserById, createCompany, updateCompany, deleteCompany } from '@/lib/api';
 import type { User } from '@/types/api/users';
@@ -234,7 +235,12 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
 
       <InputDefault
         value={slug}
-        label='Slug'
+        label={
+          <>
+            Slug
+            <OptionalField />
+          </>
+        }
         onChange={(e) => setSlug(e.target.value)}
         placeholder='slug (будет использован в URL)'
       />
@@ -251,7 +257,12 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
       />
 
       <SelectMultiple
-        label='Члены компании'
+        label={
+          <>
+            Члены компании
+            <OptionalField />
+          </>
+        }
         options={userOptions}
         value={members}
         onChange={handleMembersChange}

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import InputDefault from '@/components/Inputs/InputDefault';
 import SelectOption from '@/components/Inputs/SelectOption';
 import TextAreaDefault from '../Inputs/TextAreaDefault';
+import OptionalField from '@/components/Inputs/OptionalField';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import {
   createClient,
@@ -205,10 +206,16 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         />
       )}
 
-      <div>
-        <label className='mb-1 block text-md font-medium text-gray-700'>Описание</label>
-        <TextAreaDefault value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+      <TextAreaDefault
+        label={
+          <>
+            Описание
+            <OptionalField />
+          </>
+        }
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
 
       {error && <div className='text-sm text-red-600'>{error}</div>}
 

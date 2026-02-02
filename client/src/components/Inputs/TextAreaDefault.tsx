@@ -3,7 +3,7 @@
 import React, { TextareaHTMLAttributes } from 'react';
 
 interface TextAreaDefaultProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string;
+  label?: React.ReactNode;
   placeholder?: string;
   error?: string;
 }

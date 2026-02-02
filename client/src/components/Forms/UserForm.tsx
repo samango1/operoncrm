@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import InputDefault from '@/components/Inputs/InputDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import SelectOption from '../Inputs/SelectOption';
+import OptionalField from '@/components/Inputs/OptionalField';
 
 import { User, PlatformRole } from '@/types/api/users';
 import { createUser, updateUser, deleteUser } from '@/lib/api';
@@ -176,7 +177,12 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
       />
 
       <InputDefault
-        label='Пароль'
+        label={
+          <>
+            Пароль
+            {user ? <OptionalField /> : null}
+          </>
+        }
         name='password'
         type='password'
         value={form.password}

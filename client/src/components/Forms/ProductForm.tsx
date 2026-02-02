@@ -5,6 +5,7 @@ import InputDefault from '@/components/Inputs/InputDefault';
 import SelectOption from '@/components/Inputs/SelectOption';
 import TextAreaDefault from '@/components/Inputs/TextAreaDefault';
 import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
+import OptionalField from '@/components/Inputs/OptionalField';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
 import type { Product, ProductCurrency, ProductUnit } from '@/types/api/products';
 import type { Company } from '@/types/api/companies';
@@ -340,21 +341,36 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
 
       <div className='grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3'>
         <InputDefault
-          label='Себестоимость'
+          label={
+            <>
+              Себестоимость
+              <OptionalField />
+            </>
+          }
           type='text'
           value={costPrice}
           onChange={(e) => setCostPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
           inputMode='decimal'
         />
         <InputDefault
-          label='Вес, кг'
+          label={
+            <>
+              Вес, кг
+              <OptionalField />
+            </>
+          }
           type='text'
           value={weight}
           onChange={(e) => setWeight(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
           inputMode='decimal'
         />
         <InputDefault
-          label='Объем, м³'
+          label={
+            <>
+              Объем, м³
+              <OptionalField />
+            </>
+          }
           type='text'
           value={volume}
           onChange={(e) => setVolume(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}

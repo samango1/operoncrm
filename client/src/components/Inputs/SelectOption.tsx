@@ -10,7 +10,7 @@ export type SelectOption<T extends string | number = string> = {
 };
 
 interface SelectOptionProps<T extends string | number> extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
-  label?: string;
+  label?: React.ReactNode;
   placeholder?: string;
   error?: string;
   options: SelectOption<T>[];
