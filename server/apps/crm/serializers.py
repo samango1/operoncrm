@@ -1,8 +1,9 @@
 from apps.users.models import User
 from apps.users.serializers import UserShallowSerializer
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Company, Transaction, Client, TransactionCategory, Product
+from .models import Company, Transaction, Client, TransactionCategory, Product, Service, TransactionService, ClientService
 
 
 class MemberSerializer(serializers.Serializer):
@@ -252,6 +253,97 @@ class ProductSerializer(serializers.ModelSerializer):
         return ret
 
 
+class ServiceSerializer(serializers.ModelSerializer):
+    company = CompanyField(queryset=Company.objects.all())
+
+    class Meta:
+        model = Service
+        fields = [
+            "id",
+            "name",
+            "description",
+            "price",
+            "currency",
+            "active",
+            "duration_minutes",
+            "cost_price",
+            "company",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret["id"] = str(instance.id)
+
+        if instance.company:
+            company_data = ret.get("company")
+            if not company_data:
+                ret["company"] = CompanySerializer(instance.company, context=self.context).data
+                company_data = ret["company"]
+            company_data["id"] = str(instance.company.id)
+        return ret
+
+    def validate_duration_minutes(self, value):
+        if value == 0 or value < -1:
+            raise serializers.ValidationError("duration_minutes must be -1 or a positive number of minutes.")
+        return value
+
+
+class ServiceField(serializers.PrimaryKeyRelatedField):
+    def to_representation(self, value):
+        if value is None:
+            return None
+
+        if isinstance(value, Service):
+            return ServiceSerializer(value, context=self.context).data
+
+        pk = getattr(value, "pk", value)
+
+        try:
+            service = Service.objects.get(pk=pk)
+        except Service.DoesNotExist:
+            return None
+
+        return ServiceSerializer(service, context=self.context).data
+
+    def to_internal_value(self, data):
+        if data is None:
+            if self.allow_null:
+                return None
+            raise serializers.ValidationError("This field may not be null.")
+
+        if isinstance(data, dict):
+            pk = data.get("id") or data.get("pk")
+            if not pk:
+                raise serializers.ValidationError('Service object must include "id" field.')
+            return super().to_internal_value(pk)
+
+        return super().to_internal_value(data)
+
+
+class ClientServiceSerializer(serializers.ModelSerializer):
+    client = ClientField(queryset=Client.objects.all())
+    service = ServiceField(queryset=Service.objects.all())
+    transaction = serializers.UUIDField(source="transaction_id", read_only=True)
+
+    class Meta:
+        model = ClientService
+        fields = [
+            "id",
+            "client",
+            "service",
+            "transaction",
+            "starts_at",
+            "ends_at",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "transaction", "status", "created_at", "updated_at"]
+
+
 class ProductField(serializers.PrimaryKeyRelatedField):
     def to_representation(self, value):
         if value is None:
@@ -328,6 +420,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         many=True,
         required=False,
     )
+    services = ServiceField(
+        queryset=Service.objects.all(),
+        many=True,
+        required=False,
+    )
 
     amount = serializers.DecimalField(read_only=True, max_digits=18, decimal_places=2)
 
@@ -348,6 +445,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             "client",
             "categories",
             "products",
+            "services",
+            "services_starts_at",
             "company",
             "valid",
             "created_at",
@@ -374,6 +473,12 @@ class TransactionSerializer(serializers.ModelSerializer):
                 company_data = ret["company"]
             company_data["id"] = str(instance.company.id)
 
+        if hasattr(instance, "service_items"):
+            service_items = instance.service_items.select_related("service")
+            ret["services"] = [
+                ServiceSerializer(item.service, context=self.context).data for item in service_items
+            ]
+
         return ret
 
     def validate_initial_amount(self, value):
@@ -389,6 +494,12 @@ class TransactionSerializer(serializers.ModelSerializer):
         company = attrs.get("company", getattr(self.instance, "company", None))
         categories = attrs.get("categories", None)
         products = attrs.get("products", None)
+        services = attrs.get("services", None)
+        services_starts_at = attrs.get(
+            "services_starts_at",
+            getattr(self.instance, "services_starts_at", None),
+        )
+        client = attrs.get("client", getattr(self.instance, "client", None))
 
         if initial is None:
             raise serializers.ValidationError("initial_amount is required.")
@@ -424,22 +535,51 @@ class TransactionSerializer(serializers.ModelSerializer):
             if mismatched:
                 raise serializers.ValidationError({"products": "All products must belong to the same company as the transaction."})
 
+        if services is not None and services:
+            if services_starts_at is None:
+                raise serializers.ValidationError({"services_starts_at": "services_starts_at is required when services are provided."})
+            if client is None:
+                raise serializers.ValidationError({"client": "client is required when services are provided."})
+            if company is not None:
+                mismatched = [s for s in services if getattr(s, "company_id", None) != company.id]
+                if mismatched:
+                    raise serializers.ValidationError({"services": "All services must belong to the same company as the transaction."})
+                if client is not None and getattr(client, "company_id", None) != company.id:
+                    raise serializers.ValidationError({"client": "Client must belong to the same company as the transaction."})
+
         return attrs
 
     def create(self, validated_data):
         categories = validated_data.pop("categories", [])
         products = validated_data.pop("products", [])
+        services = validated_data.pop("services", [])
         transaction = Transaction.objects.create(**validated_data)
         if categories:
             transaction.categories.set(categories)
         if products:
             transaction.products.set(products)
+        if services:
+            TransactionService.objects.bulk_create(
+                [TransactionService(transaction=transaction, service=service) for service in services]
+            )
+            self._create_client_services(transaction, services)
         return transaction
 
     def update(self, instance, validated_data):
         categories = validated_data.pop("categories", None)
         products = validated_data.pop("products", None)
+        services = validated_data.pop("services", None)
+        services_starts_at_provided = "services_starts_at" in validated_data
         new_company = validated_data.get("company", instance.company)
+        new_client = validated_data.get("client", instance.client)
+
+        if instance.service_items.exists():
+            if services is not None:
+                raise serializers.ValidationError({"services": "Services cannot be modified after assignment."})
+            if services_starts_at_provided and validated_data.get("services_starts_at") != instance.services_starts_at:
+                raise serializers.ValidationError({"services_starts_at": "services_starts_at cannot be modified after assignment."})
+            if "client" in validated_data and new_client and instance.client_id != new_client.id:
+                raise serializers.ValidationError({"client": "Client cannot be changed after services are assigned."})
         if categories is None and new_company and new_company.id != instance.company_id:
             instance.categories.clear()
         if products is None and new_company and new_company.id != instance.company_id:
@@ -452,4 +592,38 @@ class TransactionSerializer(serializers.ModelSerializer):
             instance.categories.set(categories)
         if products is not None:
             instance.products.set(products)
+        if services is not None and services:
+            TransactionService.objects.bulk_create(
+                [TransactionService(transaction=instance, service=service) for service in services]
+            )
+            self._create_client_services(instance, services)
         return instance
+
+    def _create_client_services(self, transaction, services):
+        if not services:
+            return
+        client = transaction.client
+        starts_at = transaction.services_starts_at
+        if not client or not starts_at:
+            return
+
+        now = timezone.now()
+        items = []
+        for service in services:
+            duration = getattr(service, "duration_minutes", None)
+            ends_at = ClientService.build_ends_at(starts_at, duration)
+            status = ClientService.STATUS_ACTIVE
+            if duration == -1 or (ends_at and ends_at <= now):
+                status = ClientService.STATUS_EXPIRED
+            items.append(
+                ClientService(
+                    client=client,
+                    service=service,
+                    transaction=transaction,
+                    company=transaction.company,
+                    starts_at=starts_at,
+                    ends_at=ends_at,
+                    status=status,
+                )
+            )
+        ClientService.objects.bulk_create(items)

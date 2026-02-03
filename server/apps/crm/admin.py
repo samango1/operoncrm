@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Company, Transaction, Client, CompanyMember, TransactionCategory, Product
+from .models import Company, Transaction, Client, CompanyMember, TransactionCategory, Product, Service, ClientService
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -40,3 +40,17 @@ class ProductAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
     search_fields = ("name",)
     list_filter = ("currency", "active", "unit")
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "company", "price", "currency", "active", "duration_minutes", "created_at")
+    readonly_fields = ("id", "created_at", "updated_at")
+    search_fields = ("name",)
+    list_filter = ("currency", "active")
+
+@admin.register(ClientService)
+class ClientServiceAdmin(admin.ModelAdmin):
+    list_display = ("id", "client", "service", "company", "status", "starts_at", "ends_at", "created_at")
+    readonly_fields = ("id", "created_at", "updated_at")
+    search_fields = ("client__name", "service__name")
+    list_filter = ("status", "company")
