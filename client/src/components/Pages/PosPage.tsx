@@ -30,6 +30,11 @@ type CurrencyState = {
   mixed: boolean;
 };
 
+type SelectedProduct = {
+  product: Product;
+  qty: number;
+};
+
 const parseAmount = (value: string | number | null | undefined): number => {
   if (value === null || value === undefined) return 0;
   const normalized = normalizeDecimalInput(String(value));
@@ -93,7 +98,7 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [discount, setDiscount] = useState('');
   const [method, setMethod] = useState<TransactionMethod>('cash');
   const [note, setNote] = useState('');
@@ -192,7 +197,10 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
     [companies]
   );
 
-  const selectedProductIds = useMemo(() => new Set(selectedProducts.map((p) => String(p.id))), [selectedProducts]);
+  const selectedProductIds = useMemo(
+    () => new Set(selectedProducts.map((item) => String(item.product.id))),
+    [selectedProducts]
+  );
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -203,7 +211,7 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
   }, [products, activeOnly, inStockOnly]);
 
   const currencyState: CurrencyState = useMemo(() => {
-    const currencies = new Set(selectedProducts.map((p) => p.currency).filter(Boolean));
+    const currencies = new Set(selectedProducts.map((item) => item.product.currency).filter(Boolean));
     if (currencies.size > 1) return { mixed: true };
     if (currencies.size === 1) return { mixed: false, currency: Array.from(currencies)[0] };
     return { mixed: false };
@@ -214,7 +222,7 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
   }, [currencyState.currency, products]);
 
   const subtotalValue = useMemo(() => {
-    return selectedProducts.reduce((sum, product) => sum + parseAmount(product.price), 0);
+    return selectedProducts.reduce((sum, item) => sum + parseAmount(item.product.price) * item.qty, 0);
   }, [selectedProducts]);
 
   const subtotalRaw = useMemo(() => toAmountString(subtotalValue), [subtotalValue]);
@@ -242,16 +250,26 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
   const handleToggleProduct = (product: Product) => {
     const id = String(product.id);
     setSelectedProducts((prev) => {
-      const exists = prev.some((p) => String(p.id) === id);
-      if (exists) return prev.filter((p) => String(p.id) !== id);
-      return [...prev, product];
+      const exists = prev.find((item) => String(item.product.id) === id);
+      if (exists) return prev.filter((item) => String(item.product.id) !== id);
+      return [...prev, { product, qty: 1 }];
     });
     setSubmitSuccess(null);
     setSubmitError(null);
   };
 
+  const handleQtyChange = (productId: string, nextQty: number) => {
+    setSelectedProducts((prev) =>
+      prev.map((item) =>
+        String(item.product.id) === productId
+          ? { ...item, qty: Number.isFinite(nextQty) && nextQty > 0 ? Math.floor(nextQty) : 1 }
+          : item
+      )
+    );
+  };
+
   const handleRemoveProduct = (productId: string) => {
-    setSelectedProducts((prev) => prev.filter((p) => String(p.id) !== String(productId)));
+    setSelectedProducts((prev) => prev.filter((item) => String(item.product.id) !== String(productId)));
     setSubmitSuccess(null);
     setSubmitError(null);
   };
@@ -333,7 +351,7 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
       currency: currencyState.currency,
       date: dateTimeValue,
       description: note || undefined,
-      products: selectedProducts.map((product) => String(product.id)),
+      products: selectedProducts.flatMap((item) => Array.from({ length: item.qty }, () => String(item.product.id))),
       company: companyId,
     };
 
@@ -531,24 +549,55 @@ export default function PosPage({ tenantSlug }: PosPageProps) {
                 </div>
               ) : (
                 <div className='space-y-2 max-h-35 overflow-y-auto pr-1'>
-                  {selectedProducts.map((product) => (
+                  {selectedProducts.map((item) => (
                     <div
-                      key={String(product.id)}
-                      className='flex items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white/80 px-3 py-2'
+                      key={String(item.product.id)}
+                      className='rounded-xl border border-gray-200/80 bg-white/80 px-3 py-2 space-y-2'
                     >
-                      <div>
-                        <div className='text-sm font-medium text-gray-900'>{product.name}</div>
-                        <div className='text-xs text-gray-500'>
-                          {formatMoney(product.price)} {product.currency}
+                      <div className='flex items-center justify-between gap-3'>
+                        <div>
+                          <div className='text-sm font-medium text-gray-900'>{item.product.name}</div>
+                          <div className='text-xs text-gray-500'>
+                            {formatMoney(item.product.price)} {item.product.currency}
+                          </div>
+                        </div>
+                        <ButtonDefault
+                          variant='outline'
+                          className='px-2 py-1 text-xs'
+                          onClick={() => handleRemoveProduct(String(item.product.id))}
+                        >
+                          ×
+                        </ButtonDefault>
+                      </div>
+                      <div className='flex items-center justify-between gap-3 text-xs text-gray-500'>
+                        <span>Количество</span>
+                        <div className='flex items-center gap-2'>
+                          <InputDefault
+                            type='number'
+                            min={1}
+                            step={1}
+                            value={item.qty}
+                            onChange={(e) => handleQtyChange(String(item.product.id), Number(e.target.value))}
+                            className='w-20'
+                          />
+                          <ButtonDefault
+                            type='button'
+                            variant='danger'
+                            className='px-2 py-1 text-xs'
+                            onClick={() => handleQtyChange(String(item.product.id), Math.max(1, item.qty - 1))}
+                          >
+                            -
+                          </ButtonDefault>
+                          <ButtonDefault
+                            type='button'
+                            variant='positive'
+                            className='px-2 py-1 text-xs'
+                            onClick={() => handleQtyChange(String(item.product.id), item.qty + 1)}
+                          >
+                            +
+                          </ButtonDefault>
                         </div>
                       </div>
-                      <ButtonDefault
-                        variant='outline'
-                        className='px-2 py-1 text-xs'
-                        onClick={() => handleRemoveProduct(String(product.id))}
-                      >
-                        ×
-                      </ButtonDefault>
                     </div>
                   ))}
                 </div>

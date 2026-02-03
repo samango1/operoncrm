@@ -3,7 +3,17 @@ from apps.users.serializers import UserShallowSerializer
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Company, Transaction, Client, TransactionCategory, Product, Service, TransactionService, ClientService
+from .models import (
+    Company,
+    Transaction,
+    Client,
+    TransactionCategory,
+    Product,
+    Service,
+    TransactionProduct,
+    TransactionService,
+    ClientService,
+)
 
 
 class MemberSerializer(serializers.Serializer):
@@ -473,6 +483,12 @@ class TransactionSerializer(serializers.ModelSerializer):
                 company_data = ret["company"]
             company_data["id"] = str(instance.company.id)
 
+        if hasattr(instance, "product_items"):
+            product_items = instance.product_items.select_related("product")
+            ret["products"] = [
+                ProductSerializer(item.product, context=self.context).data for item in product_items
+            ]
+
         if hasattr(instance, "service_items"):
             service_items = instance.service_items.select_related("service")
             ret["services"] = [
@@ -557,7 +573,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         if categories:
             transaction.categories.set(categories)
         if products:
-            transaction.products.set(products)
+            TransactionProduct.objects.bulk_create(
+                [TransactionProduct(transaction=transaction, product=product) for product in products]
+            )
         if services:
             TransactionService.objects.bulk_create(
                 [TransactionService(transaction=transaction, service=service) for service in services]
@@ -591,7 +609,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         if categories is not None:
             instance.categories.set(categories)
         if products is not None:
-            instance.products.set(products)
+            instance.product_items.all().delete()
+            if products:
+                TransactionProduct.objects.bulk_create(
+                    [TransactionProduct(transaction=instance, product=product) for product in products]
+                )
         if services is not None and services:
             TransactionService.objects.bulk_create(
                 [TransactionService(transaction=instance, service=service) for service in services]

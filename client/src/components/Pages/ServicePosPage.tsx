@@ -677,8 +677,6 @@ export default function ServicePosPage({ tenantSlug }: ServicePosPageProps) {
               disabled={!companyId || clients.length === 0}
             />
 
-
-
             <SelectOption
               label='Метод оплаты'
               options={methodOptions}

@@ -66,6 +66,7 @@ export default function TransactionForm({
   const [description, setDescription] = useState<string>('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [productIds, setProductIds] = useState<string[]>([]);
+  const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [serviceQuantities, setServiceQuantities] = useState<Record<string, number>>({});
   const [servicesStartDate, setServicesStartDate] = useState<string>(initialNowRef.current.date);
@@ -86,11 +87,16 @@ export default function TransactionForm({
       .filter((id) => id);
   };
 
-  const extractProductIds = (value?: Transaction['products']): string[] => {
-    if (!value) return [];
-    return (value as Array<Product | string>)
+  const extractProductSelections = (value?: Transaction['products']): { ids: string[]; quantities: Record<string, number> } => {
+    if (!value) return { ids: [], quantities: {} };
+    const counts: Record<string, number> = {};
+    (value as Array<Product | string>)
       .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
-      .filter((id) => id);
+      .filter((id) => id)
+      .forEach((id) => {
+        counts[id] = (counts[id] ?? 0) + 1;
+      });
+    return { ids: Object.keys(counts), quantities: counts };
   };
 
   const extractServiceSelections = (value?: Transaction['services']): { ids: string[]; quantities: Record<string, number> } => {
@@ -127,7 +133,9 @@ export default function TransactionForm({
     setTime(dateTime.time);
     setDescription(transaction.description ?? '');
     setCategoryIds(extractCategoryIds(transaction.categories));
-    setProductIds(extractProductIds(transaction.products));
+    const productSelection = extractProductSelections(transaction.products);
+    setProductIds(productSelection.ids);
+    setProductQuantities(productSelection.quantities);
     const serviceSelection = extractServiceSelections(transaction.services);
     setServiceIds(serviceSelection.ids);
     setServiceQuantities(serviceSelection.quantities);
@@ -230,6 +238,7 @@ export default function TransactionForm({
       prevCompanyIdRef.current = companyId;
       if (productIds.length > 0) {
         setProductIds([]);
+        setProductQuantities({});
       }
       if (serviceIds.length > 0) {
         setServiceIds([]);
@@ -240,6 +249,7 @@ export default function TransactionForm({
     if (!companyId) {
       if (productIds.length > 0) {
         setProductIds([]);
+        setProductQuantities({});
       }
       if (serviceIds.length > 0) {
         setServiceIds([]);
@@ -251,9 +261,14 @@ export default function TransactionForm({
     const validIds = new Set(filteredProducts.map((p) => String(p.id)));
     const next = productIds.filter((id) => validIds.has(String(id)));
     if (next.length !== productIds.length) {
+      const nextQuantities: Record<string, number> = {};
+      next.forEach((id) => {
+        nextQuantities[id] = productQuantities[id] ?? 1;
+      });
       setProductIds(next);
+      setProductQuantities(nextQuantities);
     }
-  }, [filteredProducts, productIds, companyId, serviceIds]);
+  }, [filteredProducts, productIds, productQuantities, companyId, serviceIds]);
 
   useEffect(() => {
     if (!companyId) {
@@ -333,6 +348,12 @@ export default function TransactionForm({
       return;
     }
 
+    const expandedProducts = productIds.flatMap((id) => {
+      const qty = productQuantities[id] ?? 1;
+      const safeQty = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
+      return Array.from({ length: safeQty }, () => id);
+    });
+
     const expandedServices = serviceIds.flatMap((id) => {
       const qty = serviceQuantities[id] ?? 1;
       const safeQty = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
@@ -361,7 +382,7 @@ export default function TransactionForm({
       description: description || undefined,
       client: clientId || undefined,
       categories: categoryIds,
-      products: productIds,
+      products: expandedProducts,
       company: companyId ?? undefined,
       discount_amount: normalizedDiscount,
     };
@@ -543,9 +564,46 @@ export default function TransactionForm({
                   placeholder={productPlaceholder}
                   options={productOptions}
                   value={productIds}
-                  onChange={(vals) => setProductIds(vals as string[])}
+                  onChange={(vals) => {
+                    const nextIds = (vals as string[]) ?? [];
+                    const nextQuantities: Record<string, number> = {};
+                    nextIds.forEach((id) => {
+                      nextQuantities[id] = productQuantities[id] ?? 1;
+                    });
+                    setProductIds(nextIds);
+                    setProductQuantities(nextQuantities);
+                  }}
                   disabled={!companyId}
                 />
+
+                {productIds.length > 0 && (
+                  <div className='space-y-2 rounded-lg border border-gray-200 bg-white/60 p-3'>
+                    <div className='text-xs text-gray-500'>Количество товаров</div>
+                    {productIds.map((id) => {
+                      const product = filteredProducts.find((p) => String(p.id) === String(id));
+                      const label = product?.name ?? id;
+                      return (
+                        <div key={id} className='grid grid-cols-1 md:grid-cols-2 gap-3 items-end'>
+                          <div className='text-sm text-gray-700'>{label}</div>
+                          <InputDefault
+                            type='number'
+                            min={1}
+                            step={1}
+                            value={productQuantities[id] ?? 1}
+                            onChange={(e) => {
+                              const next = Number(e.target.value);
+                              setProductQuantities((prev) => ({
+                                ...prev,
+                                [id]: Number.isFinite(next) && next > 0 ? Math.floor(next) : 1,
+                              }));
+                            }}
+                            disabled={!companyId}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <SelectMultiple
                   label={

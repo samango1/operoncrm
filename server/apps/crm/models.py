@@ -225,6 +225,7 @@ class Transaction(models.Model):
         "Product",
         blank=True,
         related_name="transactions",
+        through="TransactionProduct",
     )
     services = models.ManyToManyField(
         "Service",
@@ -363,8 +364,13 @@ class Product(models.Model):
         if not products or not delta:
             return
         product_ids = [getattr(product, "id", product) for product in products]
-        qs = cls.objects.filter(id__in=product_ids).exclude(stock_quantity=-1)
-        qs.update(stock_quantity=F("stock_quantity") + delta)
+        counts = {}
+        for product_id in product_ids:
+            counts[product_id] = counts.get(product_id, 0) + 1
+        for product_id, count in counts.items():
+            cls.objects.filter(id=product_id).exclude(stock_quantity=-1).update(
+                stock_quantity=F("stock_quantity") + (delta * count)
+            )
 
 
 class Service(models.Model):
@@ -414,6 +420,29 @@ class Service(models.Model):
         if self.active:
             self.active = False
             self.save(update_fields=["active", "updated_at"])
+
+
+class TransactionProduct(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction = models.ForeignKey(
+        Transaction,
+        on_delete=models.CASCADE,
+        related_name="product_items",
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="transaction_items",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["transaction", "product"]),
+        ]
+
+    def __str__(self):
+        return f"{self.transaction_id} -> {self.product_id}"
 
 
 class TransactionService(models.Model):
