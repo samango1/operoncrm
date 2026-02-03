@@ -43,6 +43,7 @@ export default function ModalWindowDefault({
       <div
         className={clsx(
           'relative bg-white rounded-xl w-full max-w-lg p-6 sm:p-8 shadow-lg',
+          'max-h-[80vh] overflow-y-auto',
           'sm:mx-0',
           'transition-transform transform scale-100 sm:scale-100',
           className
