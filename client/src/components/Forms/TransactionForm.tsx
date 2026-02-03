@@ -13,6 +13,7 @@ import type { Company } from '@/types/api/companies';
 import type { Transaction, TransactionCategory } from '@/types/api/transactions';
 import type { Client } from '@/types/api/clients';
 import type { Product } from '@/types/api/products';
+import type { Service } from '@/types/api/services';
 import {
   createCompanyTransaction,
   updateCompanyTransaction,
@@ -34,6 +35,7 @@ type Props = {
   companies: Company[];
   clients?: Client[];
   products?: Product[];
+  services?: Service[];
   defaultCompanyId?: string;
   transaction?: Transaction;
   onCancel: () => void;
@@ -44,6 +46,7 @@ export default function TransactionForm({
   companies,
   clients = [],
   products = [],
+  services = [],
   defaultCompanyId,
   transaction,
   onCancel,
@@ -63,6 +66,10 @@ export default function TransactionForm({
   const [description, setDescription] = useState<string>('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [productIds, setProductIds] = useState<string[]>([]);
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [serviceQuantities, setServiceQuantities] = useState<Record<string, number>>({});
+  const [servicesStartDate, setServicesStartDate] = useState<string>(initialNowRef.current.date);
+  const [servicesStartTime, setServicesStartTime] = useState<string>(initialNowRef.current.time);
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const prevCompanyIdRef = useRef<string | undefined>(undefined);
@@ -84,6 +91,18 @@ export default function TransactionForm({
     return (value as Array<Product | string>)
       .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
       .filter((id) => id);
+  };
+
+  const extractServiceSelections = (value?: Transaction['services']): { ids: string[]; quantities: Record<string, number> } => {
+    if (!value) return { ids: [], quantities: {} };
+    const counts: Record<string, number> = {};
+    (value as Array<Service | string>)
+      .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
+      .filter((id) => id)
+      .forEach((id) => {
+        counts[id] = (counts[id] ?? 0) + 1;
+      });
+    return { ids: Object.keys(counts), quantities: counts };
   };
 
   useEffect(() => {
@@ -109,6 +128,17 @@ export default function TransactionForm({
     setDescription(transaction.description ?? '');
     setCategoryIds(extractCategoryIds(transaction.categories));
     setProductIds(extractProductIds(transaction.products));
+    const serviceSelection = extractServiceSelections(transaction.services);
+    setServiceIds(serviceSelection.ids);
+    setServiceQuantities(serviceSelection.quantities);
+    if (transaction.services_starts_at) {
+      const serviceDateTime = splitDateTimeToTashkent(transaction.services_starts_at);
+      setServicesStartDate(serviceDateTime.date);
+      setServicesStartTime(serviceDateTime.time);
+    } else {
+      setServicesStartDate(initialNowRef.current.date);
+      setServicesStartTime(initialNowRef.current.time);
+    }
   }, [transaction]);
 
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
@@ -148,6 +178,22 @@ export default function TransactionForm({
     label: p.name ? `${p.name}${p.price ? ` (${formatMoney(p.price)} ${p.currency ?? ''})` : ''}` : String(p.id),
   }));
 
+  const getServiceCompanyId = (s: Service): string | undefined => {
+    if (!s.company) return undefined;
+    return typeof s.company === 'string' ? s.company : String((s.company as Company)?.id ?? undefined);
+  };
+
+  const filteredServices = (services ?? []).filter((s) => {
+    if (!companyId) return false;
+    const cid = getServiceCompanyId(s);
+    return cid === companyId;
+  });
+
+  const serviceOptions: OptionType<string>[] = filteredServices.map((s) => ({
+    value: String(s.id),
+    label: s.name ? `${s.name}${s.price ? ` (${formatMoney(s.price)} ${s.currency ?? ''})` : ''}` : String(s.id),
+  }));
+
   const fetchCategories = async (company: string) => {
     setCategoriesLoading(true);
     try {
@@ -185,11 +231,19 @@ export default function TransactionForm({
       if (productIds.length > 0) {
         setProductIds([]);
       }
+      if (serviceIds.length > 0) {
+        setServiceIds([]);
+        setServiceQuantities({});
+      }
       return;
     }
     if (!companyId) {
       if (productIds.length > 0) {
         setProductIds([]);
+      }
+      if (serviceIds.length > 0) {
+        setServiceIds([]);
+        setServiceQuantities({});
       }
       return;
     }
@@ -199,7 +253,28 @@ export default function TransactionForm({
     if (next.length !== productIds.length) {
       setProductIds(next);
     }
-  }, [filteredProducts, productIds, companyId]);
+  }, [filteredProducts, productIds, companyId, serviceIds]);
+
+  useEffect(() => {
+    if (!companyId) {
+      if (serviceIds.length > 0) {
+        setServiceIds([]);
+        setServiceQuantities({});
+      }
+      return;
+    }
+    if (serviceIds.length === 0) return;
+    const validIds = new Set(filteredServices.map((s) => String(s.id)));
+    const next = serviceIds.filter((id) => validIds.has(String(id)));
+    if (next.length !== serviceIds.length) {
+      const nextQuantities: Record<string, number> = {};
+      next.forEach((id) => {
+        nextQuantities[id] = serviceQuantities[id] ?? 1;
+      });
+      setServiceIds(next);
+      setServiceQuantities(nextQuantities);
+    }
+  }, [filteredServices, serviceIds, serviceQuantities, companyId]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -258,6 +333,25 @@ export default function TransactionForm({
       return;
     }
 
+    const expandedServices = serviceIds.flatMap((id) => {
+      const qty = serviceQuantities[id] ?? 1;
+      const safeQty = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
+      return Array.from({ length: safeQty }, () => id);
+    });
+
+    let servicesStartsAtValue = '';
+    if (!servicesLocked && expandedServices.length > 0) {
+      if (!clientId) {
+        setError('Для услуг нужно выбрать клиента');
+        return;
+      }
+      servicesStartsAtValue = buildTashkentDateTime(servicesStartDate, servicesStartTime);
+      if (!servicesStartsAtValue) {
+        setError('Укажите дату начала услуг');
+        return;
+      }
+    }
+
     const payload: Partial<Transaction> = {
       initial_amount: normalizedInitial,
       type,
@@ -271,6 +365,11 @@ export default function TransactionForm({
       company: companyId ?? undefined,
       discount_amount: normalizedDiscount,
     };
+
+    if (!servicesLocked && expandedServices.length > 0) {
+      payload.services = expandedServices;
+      payload.services_starts_at = servicesStartsAtValue;
+    }
 
     try {
       setLoading(true);
@@ -313,6 +412,14 @@ export default function TransactionForm({
     : filteredProducts.length === 0
       ? 'Продукты для компании не найдены'
       : 'Выберите продукт';
+
+  const servicePlaceholder = !companyId
+    ? 'Сначала выберите компанию'
+    : filteredServices.length === 0
+      ? 'Услуги для компании не найдены'
+      : 'Выберите услугу';
+
+  const servicesLocked = Boolean(transaction && (transaction.services?.length ?? 0) > 0);
 
   const categoryOptions: OptionType<string>[] = categories.map((c) => ({
     value: String(c.id),
@@ -390,7 +497,7 @@ export default function TransactionForm({
       <ToggleBadgeGroup
         storageKey={preferencesKeys.transactionExtra}
         items={[
-          { id: 'client', label: 'Клиент и товары' },
+          { id: 'client', label: 'Клиент и товары/услуги' },
           { id: 'details', label: 'Скидка и детали' },
         ]}
       >
@@ -409,6 +516,7 @@ export default function TransactionForm({
                   options={clientOptions}
                   value={clientId}
                   onChange={(v) => setClientId(v as string | undefined)}
+                  disabled={servicesLocked}
                 />
 
                 <SelectMultiple
@@ -438,6 +546,81 @@ export default function TransactionForm({
                   onChange={(vals) => setProductIds(vals as string[])}
                   disabled={!companyId}
                 />
+
+                <SelectMultiple
+                  label={
+                    <>
+                      Услуги
+                      <OptionalField />
+                    </>
+                  }
+                  placeholder={servicePlaceholder}
+                  options={serviceOptions}
+                  value={serviceIds}
+                  onChange={(vals) => {
+                    const nextIds = (vals as string[]) ?? [];
+                    const nextQuantities: Record<string, number> = {};
+                    nextIds.forEach((id) => {
+                      nextQuantities[id] = serviceQuantities[id] ?? 1;
+                    });
+                    setServiceIds(nextIds);
+                    setServiceQuantities(nextQuantities);
+                  }}
+                  disabled={!companyId || servicesLocked}
+                />
+
+                {servicesLocked && (
+                  <div className='text-xs text-gray-500'>Услуги уже назначены. Изменение списка и даты начала недоступно.</div>
+                )}
+
+                {serviceIds.length > 0 && (
+                  <div className='space-y-2 rounded-lg border border-gray-200 bg-white/60 p-3'>
+                    <div className='text-xs text-gray-500'>Количество услуг</div>
+                    {serviceIds.map((id) => {
+                      const svc = filteredServices.find((s) => String(s.id) === String(id));
+                      const label = svc?.name ?? id;
+                      return (
+                        <div key={id} className='grid grid-cols-1 md:grid-cols-2 gap-3 items-end'>
+                          <div className='text-sm text-gray-700'>{label}</div>
+                          <InputDefault
+                            type='number'
+                            min={1}
+                            step={1}
+                            value={serviceQuantities[id] ?? 1}
+                            onChange={(e) => {
+                              const next = Number(e.target.value);
+                              setServiceQuantities((prev) => ({
+                                ...prev,
+                                [id]: Number.isFinite(next) && next > 0 ? Math.floor(next) : 1,
+                              }));
+                            }}
+                            disabled={servicesLocked}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {serviceIds.length > 0 && (
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                    <InputDefault
+                      label='Начало услуг (дата)'
+                      type='date'
+                      value={servicesStartDate}
+                      onChange={(e) => setServicesStartDate(e.target.value)}
+                      disabled={servicesLocked}
+                    />
+                    <InputDefault
+                      label='Начало услуг (время)'
+                      type='time'
+                      value={servicesStartTime}
+                      onChange={(e) => setServicesStartTime(e.target.value)}
+                      step={60}
+                      disabled={servicesLocked}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

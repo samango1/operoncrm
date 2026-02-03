@@ -1,6 +1,7 @@
 import { Client } from './clients';
 import { Company } from '@/types/api/companies';
 import { Product } from '@/types/api/products';
+import { Service } from '@/types/api/services';
 
 export type TransactionType = 'income' | 'outcome';
 export type TransactionMethod = 'cash' | 'card';
@@ -28,6 +29,8 @@ export interface Transaction {
   client?: Client | string;
   categories?: TransactionCategory[] | string[];
   products?: Product[] | string[];
+  services?: Service[] | string[];
+  services_starts_at?: string;
   company: Company | string;
   created_at?: string;
   updated_at?: string;

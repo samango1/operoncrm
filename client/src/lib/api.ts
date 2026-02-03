@@ -8,6 +8,8 @@ import { Company } from '@/types/api/companies';
 import { Transaction, TransactionCategory } from '@/types/api/transactions';
 import { Client } from '@/types/api/clients';
 import { Product } from '@/types/api/products';
+import { Service } from '@/types/api/services';
+import { ClientService } from '@/types/api/client-services';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9999/api',
@@ -273,6 +275,31 @@ export const deleteCompanyProduct = async (companyId: string, productId: string)
   return response.data;
 };
 
+// COMPANIES SERVICES
+export const getCompanyServices = async (companyId: string, query?: BaseQuery): Promise<PaginatedResponse<Service>> => {
+  return getPaginated<Service>(`/companies/${companyId}/services/`, query);
+};
+export const createCompanyService = async (companyId: string, payload: Partial<Service>): Promise<Service> => {
+  const response = await apiClient.post<Service>(`/companies/${companyId}/services/`, payload);
+  return response.data;
+};
+export const getCompanyServiceById = async (companyId: string, serviceId: string): Promise<Service> => {
+  const response = await apiClient.get<Service>(`/companies/${companyId}/services/${serviceId}/`);
+  return response.data;
+};
+export const updateCompanyService = async (
+  companyId: string,
+  serviceId: string,
+  payload: Partial<Service>
+): Promise<Service> => {
+  const response = await apiClient.patch<Service>(`/companies/${companyId}/services/${serviceId}/`, payload);
+  return response.data;
+};
+export const deleteCompanyService = async (companyId: string, serviceId: string): Promise<Service> => {
+  const response = await apiClient.delete<Service>(`/companies/${companyId}/services/${serviceId}/`);
+  return response.data;
+};
+
 // TRANSACTIONS
 export const getTransactions = async (query?: BaseQuery): Promise<PaginatedResponse<Transaction>> => {
   return getPaginated<Transaction>('/transactions/', query);
@@ -342,6 +369,28 @@ export const deleteProduct = async (id: string): Promise<Product> => {
   return response.data;
 };
 
+// SERVICES
+export const getServices = async (query?: BaseQuery): Promise<PaginatedResponse<Service>> => {
+  return getPaginated<Service>('/services/', query);
+};
+export const getServiceById = async (id: string, query?: BaseQuery): Promise<Service> => {
+  const params = cleanParams(query);
+  const response = await apiClient.get<Service>(`/services/${id}/`, { params });
+  return response.data;
+};
+export const createService = async (payload: Partial<Service>): Promise<Service> => {
+  const response = await apiClient.post<Service>('/services/', payload);
+  return response.data;
+};
+export const updateService = async (id: string, payload: Partial<Service>): Promise<Service> => {
+  const response = await apiClient.patch<Service>(`/services/${id}/`, payload);
+  return response.data;
+};
+export const deleteService = async (id: string): Promise<Service> => {
+  const response = await apiClient.delete<Service>(`/services/${id}/`);
+  return response.data;
+};
+
 // CLIENTS
 export const getClients = async (query?: BaseQuery): Promise<PaginatedResponse<Client>> => {
   return getPaginated<Client>('/clients/', query);
@@ -362,6 +411,11 @@ export const updateClient = async (id: string, payload: Partial<Client>): Promis
 export const deleteClient = async (id: string): Promise<Client> => {
   const response = await apiClient.delete<Client>(`/clients/${id}/`);
   return response.data;
+};
+
+// CLIENT SERVICES
+export const getClientServices = async (clientId: string, query?: BaseQuery): Promise<PaginatedResponse<ClientService>> => {
+  return getPaginated<ClientService>(`/clients/${clientId}/services/`, query);
 };
 
 export default apiClient;

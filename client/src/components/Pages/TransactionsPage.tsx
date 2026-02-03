@@ -6,6 +6,7 @@ import type { Company } from '@/types/api/companies';
 import type { Client } from '@/types/api/clients';
 import type { PlatformRole } from '@/types/api/users';
 import type { Product } from '@/types/api/products';
+import type { Service } from '@/types/api/services';
 
 import {
   getCompanies,
@@ -15,6 +16,7 @@ import {
   getClients,
   getCompanyTransactionById,
   getCompanyProducts,
+  getCompanyServices,
 } from '@/lib/api';
 import { formatPhoneDisplay } from '@/lib/phone';
 import { getPlatformRoleFromCookie } from '@/lib/role';
@@ -42,6 +44,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
   const [companyLoading, setCompanyLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,6 +129,16 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
     }
   };
 
+  const fetchServices = async (companyId: string) => {
+    try {
+      const res = await getCompanyServices(companyId, { page: 1, page_size: 1000 });
+      setServices(res.results as Service[]);
+    } catch (err) {
+      console.error('fetchServices error:', err);
+      setServices([]);
+    }
+  };
+
   useEffect(() => {
     if (isTenantMode) return;
     fetchCompanies();
@@ -189,8 +202,10 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
   useEffect(() => {
     if (selectedCompanyId) {
       fetchProducts(selectedCompanyId);
+      fetchServices(selectedCompanyId);
     } else {
       setProducts([]);
+      setServices([]);
     }
   }, [selectedCompanyId]);
 
@@ -226,6 +241,17 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       .map((p) => {
         if (typeof p === 'string') return p;
         return p.name ?? String(p.id ?? '');
+      })
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const formatServiceNames = (items?: Transaction['services']) => {
+    if (!items || items.length === 0) return '';
+    return (items as Array<string | { id?: string; name?: string }>)
+      .map((s) => {
+        if (typeof s === 'string') return s;
+        return s.name ?? String(s.id ?? '');
       })
       .filter(Boolean)
       .join(', ');
@@ -504,6 +530,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
             companies={companies}
             clients={clients}
             products={products}
+            services={services}
             defaultCompanyId={selectedCompanyId}
             onCancel={closeCreate}
             onSuccess={onCreated}
@@ -529,6 +556,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                   companies={companies}
                   clients={clients}
                   products={products}
+                  services={services}
                   defaultCompanyId={
                     typeof selectedTransaction.company === 'string'
                       ? selectedTransaction.company
@@ -587,6 +615,13 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                   </div>
                   <div>
                     <strong>Продукты:</strong> {formatProductNames(selectedTransaction.products)}
+                  </div>
+                  <div>
+                    <strong>Услуги:</strong> {formatServiceNames(selectedTransaction.services)}
+                  </div>
+                  <div>
+                    <strong>Начало услуг:</strong>{' '}
+                    {selectedTransaction.services_starts_at ? String(selectedTransaction.services_starts_at).slice(0, 16) : ''}
                   </div>
                   <div>
                     <strong>Компания:</strong>{' '}

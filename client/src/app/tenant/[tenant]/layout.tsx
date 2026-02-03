@@ -11,6 +11,9 @@ export default async function TenantLayout({ children }: TenantLayoutProps) {
     { path: '/transactions', label: 'Транзакции', icon: 'transactions' },
     { path: '/clients', label: 'Клиенты', icon: 'clients' },
     { path: '/products', label: 'Продукты', icon: 'products' },
+    { path: '/services', label: 'Услуги', icon: 'services' },
+    { path: '/service-deliveries', label: 'Услуги клиентов', icon: 'service-deliveries' },
+    { path: '/service-pos', label: 'Предоставление услуг', icon: 'pos' },
     { path: '/pos', label: 'Продажа продукции', icon: 'pos' },
   ];
 

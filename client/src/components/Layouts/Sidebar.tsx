@@ -1,7 +1,20 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, Users, Building2, Banknote, Contact, Settings, Tag, Package, Calculator, type LucideIcon } from 'lucide-react';
+import {
+  Home,
+  Users,
+  Building2,
+  Banknote,
+  Contact,
+  Settings,
+  Tag,
+  Package,
+  Calculator,
+  Layers,
+  ClipboardCheck,
+  type LucideIcon,
+} from 'lucide-react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
@@ -13,6 +26,8 @@ export type SidebarIconKey =
   | 'clients'
   | 'categories'
   | 'products'
+  | 'services'
+  | 'service-deliveries'
   | 'settings'
   | 'pos';
 
@@ -35,6 +50,8 @@ const iconMap: Record<SidebarIconKey, LucideIcon> = {
   clients: Contact,
   categories: Tag,
   products: Package,
+  services: Layers,
+  'service-deliveries': ClipboardCheck,
   settings: Settings,
   pos: Calculator,
 };
@@ -49,7 +66,7 @@ export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {
       <div className='h-full rounded-2xl bg-white shadow-md flex md:flex-col flex-row items-center md:items-stretch border border-gray-200 md:border-0 overflow-hidden'>
         <div className='hidden md:block px-4 py-3 text-2xl font-semibold text-gray-700'>{title}</div>
 
-        <nav className='flex-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full overflow-x-auto md:overflow-y-auto md:pr-1'>
+        <nav className='flex-1 md:px-2 md:space-y-1 flex flex-row md:flex-col gap-1 md:gap-0 w-full overflow-x-auto md:overflow-y-auto'>
           {items.map(({ path, label, icon }) => {
             const Icon = icon ? iconMap[icon] : undefined;
             return (

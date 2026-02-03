@@ -29,6 +29,8 @@ export const preferenceIds = {
     clientFormExtra: 'client-form-extra',
     companyFormExtra: 'company-form-extra',
     productFormExtra: 'product-form-extra',
+    serviceFormExtra: 'service-form-extra',
+    servicePosExtra: 'service-pos-extra',
     userFormPassword: 'user-form-password',
   },
 };
