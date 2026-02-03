@@ -372,6 +372,7 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
                   onCancel={closeModal}
                   onSuccess={async () => {
                     closeModal();
+                    if (!selectedCompanyId) return;
                     await fetchServices(selectedCompanyId, currentPage, pageSize, globalSearch);
                   }}
                 />

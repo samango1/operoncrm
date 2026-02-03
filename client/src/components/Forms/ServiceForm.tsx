@@ -139,15 +139,15 @@ export default function ServiceForm({ service, onCancel, onSuccess, fixedCompany
 
   const durationOptions: OptionType<'one-time' | 'minutes'>[] = [
     { value: 'one-time', label: 'Одноразовая' },
-    { value: 'minutes', label: 'По минутам' },
+    { value: 'minutes', label: 'На время' },
   ];
 
   const durationUnitOptions: OptionType<DurationUnit>[] = [
     { value: 'minutes', label: 'Минуты' },
     { value: 'hours', label: 'Часы' },
     { value: 'days', label: 'Дни' },
-    { value: 'months', label: 'Месяцы (30д)' },
-    { value: 'years', label: 'Годы (365д)' },
+    { value: 'months', label: 'Месяцы' },
+    { value: 'years', label: 'Годы' },
   ];
 
   const handleSubmit = async (e?: React.FormEvent) => {
