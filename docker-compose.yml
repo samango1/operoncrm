@@ -21,7 +21,7 @@ services:
       context: ./client
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.client.rule=Host(`operoncrm.uz`) || Host(`admin.operoncrm.uz`) || Host(`agent.operoncrm.uz`) || Host(`login.operoncrm.uz`) || Host(`shokssat.operoncrm.uz`) || Host(`yatt-daminov-sezar-baxtiyarovich.operoncrm.uz`) || Host(`suli.operoncrm.uz`) || Host(`eit.operoncrm.uz`)"
+      - "traefik.http.routers.client.rule=Host(`operoncrm.uz`) || Host(`admin.operoncrm.uz`) || Host(`agent.operoncrm.uz`) || Host(`login.operoncrm.uz`) || Host(`shokssat.operoncrm.uz`) || Host(`yatt-daminov-sezar-baxtiyarovich.operoncrm.uz`) || Host(`suli.operoncrm.uz`) || Host(`eit.operoncrm.uz`) || Host(`test.operoncrm.uz`)"
       - "traefik.http.routers.client.entrypoints=websecure"
       - "traefik.http.routers.client.tls=true"
       - "traefik.http.routers.client.tls.certresolver=letsencrypt"
