@@ -118,6 +118,35 @@ const trimLabel = (value: string, maxLength = 28): string => {
   return `${value.slice(0, maxLength - 1)}…`;
 };
 
+const detectDominantCurrency = (items: StatisticsKeyAmountItem[]): FiltersState['currency'] => {
+  if (!items || items.length === 0) return 'all';
+
+  const normalized = items
+    .map((item) => {
+      const keyRaw = String(item.key ?? item.label ?? '')
+        .trim()
+        .toUpperCase();
+      if (keyRaw !== 'UZS' && keyRaw !== 'USD') return null;
+      return {
+        key: keyRaw as Exclude<FiltersState['currency'], 'all'>,
+        count: Number(item.count ?? 0),
+        amountAbs: Math.abs(toNumber(item.amount)),
+      };
+    })
+    .filter(
+      (item): item is { key: Exclude<FiltersState['currency'], 'all'>; count: number; amountAbs: number } => Boolean(item)
+    );
+
+  if (normalized.length === 0) return 'all';
+
+  normalized.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return b.amountAbs - a.amountAbs;
+  });
+
+  return normalized[0].key;
+};
+
 export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
   const [statistics, setStatistics] = useState<CompanyStatistics | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -134,6 +163,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [role, setRole] = useState<PlatformRole | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [currencyManuallyChanged, setCurrencyManuallyChanged] = useState(false);
 
   const isTenantMode = Boolean(tenantSlug);
 
@@ -297,7 +327,21 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       try {
         const response = await getCompanyStatistics(selectedCompanyId, statisticsQuery);
         if (cancelled) return;
-        setStatistics(response as CompanyStatistics);
+        const typedResponse = response as CompanyStatistics;
+        setStatistics(typedResponse);
+
+        if (!currencyManuallyChanged && filters.currency === 'all') {
+          const dominantCurrency = detectDominantCurrency(typedResponse?.breakdowns?.currencies ?? []);
+          if (dominantCurrency !== 'all') {
+            setFilters((prev) => {
+              if (prev.currency === dominantCurrency) return prev;
+              return {
+                ...prev,
+                currency: dominantCurrency,
+              };
+            });
+          }
+        }
       } catch (err) {
         if (cancelled) return;
         console.error('getCompanyStatistics error:', err);
@@ -312,7 +356,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [selectedCompanyId, statisticsQuery, filters.dateFrom, filters.dateTo]);
+  }, [selectedCompanyId, statisticsQuery, filters.dateFrom, filters.dateTo, filters.currency, currencyManuallyChanged]);
 
   const selectedCompany = useMemo(() => {
     if (isTenantMode) return tenantCompany ?? undefined;
@@ -528,6 +572,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
 
   const resetFilters = () => {
     const defaultValid = !isTenantMode && (role === 'admin' || role === 'agent') ? true : null;
+    setCurrencyManuallyChanged(false);
     setFilters({
       dateFrom: '',
       dateTo: '',
@@ -575,6 +620,11 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
                 setSelectedCompanyId(value);
                 setStatistics(null);
                 setShowAdvancedFilters(false);
+                setCurrencyManuallyChanged(false);
+                setFilters((prev) => ({
+                  ...prev,
+                  currency: 'all',
+                }));
               }}
             />
           </div>
@@ -653,12 +703,13 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
                   { value: 'USD', label: 'USD' },
                 ]}
                 value={filters.currency}
-                onChange={(value) =>
+                onChange={(value) => {
+                  setCurrencyManuallyChanged(true);
                   setFilters((prev) => ({
                     ...prev,
                     currency: (value as FiltersState['currency'] | undefined) ?? 'all',
-                  }))
-                }
+                  }));
+                }}
               />
             </div>
 
