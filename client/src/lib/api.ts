@@ -10,6 +10,7 @@ import { Client } from '@/types/api/clients';
 import { Product } from '@/types/api/products';
 import { Service } from '@/types/api/services';
 import { ClientService } from '@/types/api/client-services';
+import { CompanyStatistics, CompanyStatisticsQuery } from '@/types/api/statistics';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:9999/api',
@@ -102,6 +103,11 @@ function cleanParams<T extends Record<string, any> | undefined>(params?: T): Par
   return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null)) as Partial<T>;
 }
 
+function toCsv(values?: string[]): string | undefined {
+  if (!values || values.length === 0) return undefined;
+  return values.join(',');
+}
+
 async function getPaginated<T>(url: string, query?: BaseQuery): Promise<PaginatedResponse<T>> {
   const params = cleanParams(query);
   const response = await apiClient.get<PaginatedResponse<T>>(url, { params });
@@ -164,6 +170,24 @@ export const updateCompany = async (id: string, payload: Partial<Company>): Prom
 };
 export const deleteCompany = async (id: string): Promise<Company> => {
   const response = await apiClient.delete<Company>(`/companies/${id}/`);
+  return response.data;
+};
+export const getCompanyStatistics = async (companyId: string, query?: CompanyStatisticsQuery): Promise<CompanyStatistics> => {
+  const params = cleanParams({
+    date_from: query?.date_from,
+    date_to: query?.date_to,
+    group_by: query?.group_by,
+    types: toCsv(query?.types),
+    methods: toCsv(query?.methods),
+    currencies: toCsv(query?.currencies),
+    category_ids: toCsv(query?.category_ids),
+    product_ids: toCsv(query?.product_ids),
+    service_ids: toCsv(query?.service_ids),
+    client_ids: toCsv(query?.client_ids),
+    valid: query?.valid,
+    top: query?.top,
+  });
+  const response = await apiClient.get<CompanyStatistics>(`/companies/${companyId}/statistics/`, { params });
   return response.data;
 };
 

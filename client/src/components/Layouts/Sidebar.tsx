@@ -13,6 +13,7 @@ import {
   Calculator,
   Layers,
   ClipboardCheck,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -29,7 +30,8 @@ export type SidebarIconKey =
   | 'services'
   | 'service-deliveries'
   | 'settings'
-  | 'pos';
+  | 'pos'
+  | 'statistics';
 
 export type SidebarItem = {
   path: string;
@@ -54,6 +56,7 @@ const iconMap: Record<SidebarIconKey, LucideIcon> = {
   'service-deliveries': ClipboardCheck,
   settings: Settings,
   pos: Calculator,
+  statistics: BarChart3,
 };
 
 export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {

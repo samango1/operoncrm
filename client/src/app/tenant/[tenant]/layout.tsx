@@ -8,6 +8,7 @@ interface TenantLayoutProps {
 
 export default async function TenantLayout({ children }: TenantLayoutProps) {
   const items: SidebarItem[] = [
+    { path: '/statistics', label: 'Статистика', icon: 'statistics' },
     { path: '/transactions', label: 'Транзакции', icon: 'transactions' },
     { path: '/clients', label: 'Клиенты', icon: 'clients' },
     { path: '/products', label: 'Продукты', icon: 'products' },
