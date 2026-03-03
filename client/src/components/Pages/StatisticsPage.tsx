@@ -68,12 +68,7 @@ function SummaryCard({
   value: string;
   accent?: 'default' | 'positive' | 'negative';
 }) {
-  const accentClass =
-    accent === 'positive'
-      ? 'text-green-600'
-      : accent === 'negative'
-        ? 'text-red-600'
-        : 'text-gray-900';
+  const accentClass = accent === 'positive' ? 'text-green-600' : accent === 'negative' ? 'text-red-600' : 'text-gray-900';
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
@@ -87,15 +82,7 @@ function EmptyState({ text }: { text: string }) {
   return <div className='rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500'>{text}</div>;
 }
 
-function ChartCard({
-  title,
-  children,
-  hint,
-}: {
-  title: string;
-  children: React.ReactNode;
-  hint?: string;
-}) {
+function ChartCard({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
       <h3 className='text-base font-semibold mb-1'>{title}</h3>
@@ -133,8 +120,8 @@ const detectDominantCurrency = (items: StatisticsKeyAmountItem[]): FiltersState[
         amountAbs: Math.abs(toNumber(item.amount)),
       };
     })
-    .filter(
-      (item): item is { key: Exclude<FiltersState['currency'], 'all'>; count: number; amountAbs: number } => Boolean(item)
+    .filter((item): item is { key: Exclude<FiltersState['currency'], 'all'>; count: number; amountAbs: number } =>
+      Boolean(item)
     );
 
   if (normalized.length === 0) return 'all';
@@ -411,8 +398,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
 
   const showValidSwitch = !isTenantMode && (role === 'admin' || role === 'agent');
   const selectedCurrencyLabel = filters.currency === 'all' ? '' : filters.currency;
-  const hasMixedCurrencies =
-    filters.currency === 'all' && (statistics?.breakdowns?.currencies?.length ?? 0) > 1;
+  const hasMixedCurrencies = filters.currency === 'all' && (statistics?.breakdowns?.currencies?.length ?? 0) > 1;
 
   const formatAmount = (value?: string | null): string => {
     const formatted = formatMoney(value ?? '');
@@ -433,7 +419,11 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       { label: 'Предоставлено услуг', value: String(summary.services_units ?? 0) },
       { label: 'Доход', value: formatAmount(summary.income_total), accent: 'positive' as const },
       { label: 'Расход', value: formatAmount(summary.outcome_total), accent: 'negative' as const },
-      { label: 'Баланс', value: formatAmount(summary.balance), accent: balanceAmount >= 0 ? ('positive' as const) : ('negative' as const) },
+      {
+        label: 'Баланс',
+        value: formatAmount(summary.balance),
+        accent: balanceAmount >= 0 ? ('positive' as const) : ('negative' as const),
+      },
       { label: 'Сумма скидок', value: formatAmount(summary.discount_total) },
       { label: 'Средний чек', value: formatAmount(summary.average_transaction) },
     ];
@@ -962,11 +952,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               {statistics.breakdowns.categories.length === 0 ? (
                 <EmptyState text='Нет данных по категориям.' />
               ) : (
-                <TableDefault
-                  columns={namedAmountColumns}
-                  data={statistics.breakdowns.categories}
-                  className='bg-transparent'
-                />
+                <TableDefault columns={namedAmountColumns} data={statistics.breakdowns.categories} className='bg-transparent' />
               )}
             </div>
 

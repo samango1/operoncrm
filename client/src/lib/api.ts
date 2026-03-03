@@ -4,7 +4,7 @@ import { LoginPayload, TokenResponse, RefreshPayload, AccessTokenResponse } from
 import { PaginatedResponse } from '@/types/api/pagination';
 import { BaseQuery } from '@/types/api/common';
 import { User } from '@/types/api/users';
-import { Company } from '@/types/api/companies';
+import { Company, CompanySlugLookup } from '@/types/api/companies';
 import { Transaction, TransactionCategory } from '@/types/api/transactions';
 import { Client } from '@/types/api/clients';
 import { Product } from '@/types/api/products';
@@ -103,13 +103,21 @@ function cleanParams<T extends Record<string, any> | undefined>(params?: T): Par
   return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null)) as Partial<T>;
 }
 
+function withDeepDefault(query: BaseQuery | undefined, deepDefault: boolean): Partial<BaseQuery> | undefined {
+  const merged: BaseQuery = {
+    ...query,
+    deep: query?.deep ?? deepDefault,
+  };
+  return cleanParams(merged);
+}
+
 function toCsv(values?: string[]): string | undefined {
   if (!values || values.length === 0) return undefined;
   return values.join(',');
 }
 
 async function getPaginated<T>(url: string, query?: BaseQuery): Promise<PaginatedResponse<T>> {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, false);
   const response = await apiClient.get<PaginatedResponse<T>>(url, { params });
   return response.data;
 }
@@ -129,7 +137,7 @@ export const getUsers = async (query?: BaseQuery): Promise<PaginatedResponse<Use
   return getPaginated<User>('/users/', query);
 };
 export const getUserById = async (id: string, query?: BaseQuery): Promise<User> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<User>(`/users/${id}/`, { params });
   return response.data;
 };
@@ -150,13 +158,13 @@ export const deleteUser = async (id: string): Promise<User> => {
 export const getCompanies = async (query?: BaseQuery): Promise<PaginatedResponse<Company>> => {
   return getPaginated<Company>('/companies/', query);
 };
-export const getCompanyBySlug = async (slug: string, query?: BaseQuery): Promise<Company> => {
-  const params = cleanParams(query);
-  const response = await apiClient.get<Company>(`/companies/slug/${slug}/`, { params });
+export const getCompanyBySlug = async (slug: string, query?: BaseQuery): Promise<CompanySlugLookup> => {
+  const params = withDeepDefault(query, false);
+  const response = await apiClient.get<CompanySlugLookup>(`/companies/slug/${slug}/`, { params });
   return response.data;
 };
 export const getCompanyById = async (id: string, query?: BaseQuery): Promise<Company> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<Company>(`/companies/${id}/`, { params });
   return response.data;
 };
@@ -199,8 +207,13 @@ export const createCompanyTransaction = async (companyId: string, payload: Parti
   const response = await apiClient.post<Transaction>(`/companies/${companyId}/transactions/`, payload);
   return response.data;
 };
-export const getCompanyTransactionById = async (companyId: string, transactionId: string): Promise<Transaction> => {
-  const response = await apiClient.get<Transaction>(`/companies/${companyId}/transactions/${transactionId}/`);
+export const getCompanyTransactionById = async (
+  companyId: string,
+  transactionId: string,
+  query?: BaseQuery
+): Promise<Transaction> => {
+  const params = withDeepDefault(query, true);
+  const response = await apiClient.get<Transaction>(`/companies/${companyId}/transactions/${transactionId}/`, { params });
   return response.data;
 };
 export const updateCompanyTransaction = async (
@@ -224,8 +237,9 @@ export const createCompanyClient = async (companyId: string, payload: Partial<Cl
   const response = await apiClient.post<Client>(`/companies/${companyId}/clients/`, payload);
   return response.data;
 };
-export const getCompanyClientById = async (companyId: string, clientId: string): Promise<Client> => {
-  const response = await apiClient.get<Client>(`/companies/${companyId}/clients/${clientId}/`);
+export const getCompanyClientById = async (companyId: string, clientId: string, query?: BaseQuery): Promise<Client> => {
+  const params = withDeepDefault(query, true);
+  const response = await apiClient.get<Client>(`/companies/${companyId}/clients/${clientId}/`, { params });
   return response.data;
 };
 export const updateCompanyClient = async (companyId: string, clientId: string, payload: Partial<Client>): Promise<Client> => {
@@ -253,9 +267,13 @@ export const createCompanyTransactionCategory = async (
 };
 export const getCompanyTransactionCategoryById = async (
   companyId: string,
-  categoryId: string
+  categoryId: string,
+  query?: BaseQuery
 ): Promise<TransactionCategory> => {
-  const response = await apiClient.get<TransactionCategory>(`/companies/${companyId}/transaction-categories/${categoryId}/`);
+  const params = withDeepDefault(query, true);
+  const response = await apiClient.get<TransactionCategory>(`/companies/${companyId}/transaction-categories/${categoryId}/`, {
+    params,
+  });
   return response.data;
 };
 export const updateCompanyTransactionCategory = async (
@@ -282,8 +300,9 @@ export const createCompanyProduct = async (companyId: string, payload: Partial<P
   const response = await apiClient.post<Product>(`/companies/${companyId}/products/`, payload);
   return response.data;
 };
-export const getCompanyProductById = async (companyId: string, productId: string): Promise<Product> => {
-  const response = await apiClient.get<Product>(`/companies/${companyId}/products/${productId}/`);
+export const getCompanyProductById = async (companyId: string, productId: string, query?: BaseQuery): Promise<Product> => {
+  const params = withDeepDefault(query, true);
+  const response = await apiClient.get<Product>(`/companies/${companyId}/products/${productId}/`, { params });
   return response.data;
 };
 export const updateCompanyProduct = async (
@@ -307,8 +326,9 @@ export const createCompanyService = async (companyId: string, payload: Partial<S
   const response = await apiClient.post<Service>(`/companies/${companyId}/services/`, payload);
   return response.data;
 };
-export const getCompanyServiceById = async (companyId: string, serviceId: string): Promise<Service> => {
-  const response = await apiClient.get<Service>(`/companies/${companyId}/services/${serviceId}/`);
+export const getCompanyServiceById = async (companyId: string, serviceId: string, query?: BaseQuery): Promise<Service> => {
+  const params = withDeepDefault(query, true);
+  const response = await apiClient.get<Service>(`/companies/${companyId}/services/${serviceId}/`, { params });
   return response.data;
 };
 export const updateCompanyService = async (
@@ -329,7 +349,7 @@ export const getTransactions = async (query?: BaseQuery): Promise<PaginatedRespo
   return getPaginated<Transaction>('/transactions/', query);
 };
 export const getTransactionById = async (id: string, query?: BaseQuery): Promise<Transaction> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<Transaction>(`/transactions/${id}/`, { params });
   return response.data;
 };
@@ -351,7 +371,7 @@ export const getTransactionCategories = async (query?: BaseQuery): Promise<Pagin
   return getPaginated<TransactionCategory>('/transaction-categories/', query);
 };
 export const getTransactionCategoryById = async (id: string, query?: BaseQuery): Promise<TransactionCategory> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<TransactionCategory>(`/transaction-categories/${id}/`, { params });
   return response.data;
 };
@@ -376,7 +396,7 @@ export const getProducts = async (query?: BaseQuery): Promise<PaginatedResponse<
   return getPaginated<Product>('/products/', query);
 };
 export const getProductById = async (id: string, query?: BaseQuery): Promise<Product> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<Product>(`/products/${id}/`, { params });
   return response.data;
 };
@@ -398,7 +418,7 @@ export const getServices = async (query?: BaseQuery): Promise<PaginatedResponse<
   return getPaginated<Service>('/services/', query);
 };
 export const getServiceById = async (id: string, query?: BaseQuery): Promise<Service> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<Service>(`/services/${id}/`, { params });
   return response.data;
 };
@@ -420,7 +440,7 @@ export const getClients = async (query?: BaseQuery): Promise<PaginatedResponse<C
   return getPaginated<Client>('/clients/', query);
 };
 export const getClientById = async (id: string, query?: BaseQuery): Promise<Client> => {
-  const params = cleanParams(query);
+  const params = withDeepDefault(query, true);
   const response = await apiClient.get<Client>(`/clients/${id}/`, { params });
   return response.data;
 };

@@ -22,6 +22,8 @@ CANDIDATE_FIELD_TYPES = (
 
 TEXT_FIELD_TYPES = (CharField, TextField, SlugField, EmailField)
 NUMERIC_FIELD_TYPES = (IntegerField, BigIntegerField)
+BOOL_TRUE_VALUES = {"1", "true", "yes", "on"}
+BOOL_FALSE_VALUES = {"0", "false", "no", "off"}
 
 
 class CreatedByMixin:
@@ -37,6 +39,51 @@ class RoleQuerysetMixin:
         if user.is_agent:
             return queryset.filter(created_by=user)
         return queryset.none()
+
+
+def parse_bool_query_param(raw) -> Optional[bool]:
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return raw
+    normalized = str(raw).strip().lower()
+    if normalized in BOOL_TRUE_VALUES:
+        return True
+    if normalized in BOOL_FALSE_VALUES:
+        return False
+    return None
+
+
+class DeepQueryMixin:
+    deep_shallow_actions = ("list",)
+    deep_shallow_get_actions = ()
+
+    def _parse_deep_param(self) -> Optional[bool]:
+        request = getattr(self, "request", None)
+        if request is None:
+            return None
+        return parse_bool_query_param(request.query_params.get("deep"))
+
+    def _default_deep_for_request(self) -> bool:
+        action = getattr(self, "action", None)
+        method = getattr(getattr(self, "request", None), "method", "").upper()
+
+        if action in set(self.deep_shallow_actions):
+            return False
+        if method == "GET" and action in set(self.deep_shallow_get_actions):
+            return False
+        return True
+
+    def _deep_requested(self) -> bool:
+        deep = self._parse_deep_param()
+        if deep is not None:
+            return deep
+        return self._default_deep_for_request()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["deep"] = self._deep_requested()
+        return context
 
 
 def _normalize_for_search(s: Optional[str]) -> str:
@@ -91,9 +138,11 @@ def _apply_short_query_filter(
         added = True
 
     if any(ch.isdigit() for ch in q_norm):
-        for field in numeric_fields:
-            cond |= Q(**{f"{field}__icontains": q_norm})
-            added = True
+        if q_norm.isdigit():
+            num_value = int(q_norm)
+            for field in numeric_fields:
+                cond |= Q(**{field: num_value})
+                added = True
 
     if not added:
         return None

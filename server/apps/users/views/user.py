@@ -1,13 +1,14 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiParameter, OpenApiTypes, extend_schema
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .mixins import apply_search_filter
-from .models import User
-from .permissions import IsAdmin, IsAdminOrAgent, IsCreatorOrAdmin
-from .serializers import (
+from ..mixins import DeepQueryMixin, apply_search_filter
+from ..models import User
+from ..permissions import IsAdmin, IsAdminOrAgent, IsCreatorOrAdmin
+from ..serializers import (
     UserCreateSerializer,
     UserDeepSerializer,
     UserShallowSerializer,
@@ -15,14 +16,46 @@ from .serializers import (
 )
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(DeepQueryMixin, viewsets.ModelViewSet):
     queryset = User.objects.all()
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated, IsAdminOrAgent]
     lookup_field = "id"
 
-    def _deep_requested(self) -> bool:
-        return str(self.request.query_params.get("deep", "false")).lower() == "true"
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                location=OpenApiParameter.QUERY,
+                required=False,
+                type=OpenApiTypes.STR,
+                description="Fuzzy search query.",
+            ),
+            OpenApiParameter(
+                name="deep",
+                location=OpenApiParameter.QUERY,
+                required=False,
+                type=OpenApiTypes.BOOL,
+                description="Include expanded nested objects. Default: false for list.",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="deep",
+                location=OpenApiParameter.QUERY,
+                required=False,
+                type=OpenApiTypes.BOOL,
+                description="Include expanded nested objects. Default: true for detail.",
+            ),
+        ]
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
     def get_permissions(self):
         if self.action == "retrieve":
@@ -53,6 +86,8 @@ class UserViewSet(viewsets.ModelViewSet):
             qs = User.objects.filter(created_by=user)
         else:
             return User.objects.none()
+
+        qs = qs.order_by("name", "id")
 
         if self._deep_requested():
             qs = qs.select_related("created_by")

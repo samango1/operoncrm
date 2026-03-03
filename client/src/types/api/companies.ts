@@ -1,6 +1,10 @@
 import { User } from '@/types/api/users';
 
-export type UsagePlan = 'start' | 'basic' | 'basic';
+export type UsagePlan = 'start' | 'basic' | 'advanced';
+
+export interface CompanySlugLookup {
+  id: string;
+}
 
 export interface CompanyMember {
   id: string;
@@ -11,7 +15,7 @@ export interface Company {
   id: string;
   name: string;
   slug: string;
-  members: CompanyMember[];
+  members?: CompanyMember[];
   plan: UsagePlan;
   created_by: User;
   created_at: string;

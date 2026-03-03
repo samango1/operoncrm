@@ -7,8 +7,8 @@ export interface Client {
   id: string;
   type?: ClientType;
   name: string;
-  phone: string;
-  description?: string;
+  phone?: string | null;
+  description?: string | null;
   company?: Company | string;
   created_by?: User;
   valid?: boolean;

@@ -24,7 +24,7 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
   const [name, setName] = useState<string>(company?.name ?? '');
   const [slug, setSlug] = useState<string>(company?.slug ?? '');
   const [plan, setPlan] = useState<UsagePlan>(company?.plan ?? ('start' as UsagePlan));
-  const [members, setMembers] = useState<string[]>(company?.members.map((m) => m.id) ?? []);
+  const [members, setMembers] = useState<string[]>(company?.members?.map((m) => m.id) ?? []);
 
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -58,7 +58,7 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
     setName(company?.name ?? '');
     setSlug(company?.slug ?? '');
     setPlan(company?.plan ?? ('start' as UsagePlan));
-    const membersArr = company?.members.map((m) => m.id) ?? [];
+    const membersArr = company?.members?.map((m) => m.id) ?? [];
     setMembers(membersArr);
     prevMembersRef.current = membersArr;
   }, [company]);
@@ -129,7 +129,7 @@ export default function CompanyForm({ company, onCancel, onSuccess }: Props) {
       setUpdatingMembers(true);
       try {
         const resp = await updateCompany(String(company.id), payload);
-        const returnedMembers = resp.members.map((m) => m.id);
+        const returnedMembers = (resp.members ?? []).map((m) => m.id);
         setMembers(returnedMembers);
         prevMembersRef.current = returnedMembers;
 

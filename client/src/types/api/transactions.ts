@@ -24,13 +24,13 @@ export interface Transaction {
   type: TransactionType;
   method: TransactionMethod;
   date: string;
-  description?: string;
+  description?: string | null;
   currency: TransactionCurrency;
-  client?: Client | string;
+  client?: Client | string | null;
   categories?: TransactionCategory[] | string[];
   products?: Product[] | string[];
   services?: Service[] | string[];
-  services_starts_at?: string;
+  services_starts_at?: string | null;
   company: Company | string;
   created_at?: string;
   updated_at?: string;

@@ -2,16 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Line } from 'react-chartjs-2';
-import {
-  CategoryScale,
-  Chart as ChartJS,
-  Filler,
-  Legend,
-  LineElement,
-  LinearScale,
-  PointElement,
-  Tooltip,
-} from 'chart.js';
+import { CategoryScale, Chart as ChartJS, Filler, Legend, LineElement, LinearScale, PointElement, Tooltip } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
 
@@ -25,13 +16,7 @@ type LineChartProps = {
   fillColor?: string;
 };
 
-const LineChart: React.FC<LineChartProps> = ({
-  data,
-  xKey,
-  yKey,
-  lineColor = '#f97316',
-  fillColor = '#f97316',
-}) => {
+const LineChart: React.FC<LineChartProps> = ({ data, xKey, yKey, lineColor = '#f97316', fillColor = '#f97316' }) => {
   const [textColor, setTextColor] = useState<string>('#111');
 
   useEffect(() => {

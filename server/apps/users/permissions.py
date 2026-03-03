@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 from django.apps import apps
 
 
@@ -46,11 +46,6 @@ class IsMemberOrCreatedBy(BasePermission):
                 return True
         except Exception:
             pass
-        members = company.members or []
-        user_id_str = str(user.id)
-        for m in members:
-            if str(m.get("id")) == user_id_str:
-                return True
         return False
 
     def has_permission(self, request, view):
@@ -62,13 +57,17 @@ class IsMemberOrCreatedBy(BasePermission):
             return True
 
         if view.action == "create":
-            company_id = request.data.get("company_id") or request.data.get("company")
+            raw_company = request.data.get("company_id") or request.data.get("company")
+            if isinstance(raw_company, dict):
+                company_id = raw_company.get("id") or raw_company.get("pk")
+            else:
+                company_id = raw_company
             if not company_id:
                 return False
             Company = apps.get_model("crm", "Company")
             try:
                 company = Company.objects.get(id=company_id)
-            except Company.DoesNotExist:
+            except (Company.DoesNotExist, ValueError, TypeError):
                 return False
 
             if getattr(user, "is_agent", False) and company.created_by_id == user.id:
@@ -86,21 +85,28 @@ class IsMemberOrCreatedBy(BasePermission):
         if getattr(user, "is_admin", False):
             return True
 
-        creator_id = getattr(obj, "created_by_id", None)
-        if creator_id is not None and str(creator_id) == str(user.id):
-            return True
-
         Company = apps.get_model("crm", "Company")
         if isinstance(obj, Company):
             return self._is_member_or_owner(user, obj)
 
         company = getattr(obj, "company", None)
-        if getattr(obj, "valid", True) is False:
-            if request.method == "DELETE":
-                return self._is_member_or_owner(user, company)
-            return company is not None and company.created_by_id == user.id
+        is_owner_or_member = self._is_member_or_owner(user, company)
+        is_company_owner = bool(company and company.created_by_id == user.id)
+        creator_id = getattr(obj, "created_by_id", None)
+        is_creator = creator_id is not None and str(creator_id) == str(user.id)
 
-        return self._is_member_or_owner(user, company)
+        if request.method in SAFE_METHODS:
+            if getattr(obj, "valid", True) is False:
+                return is_company_owner
+            return is_owner_or_member
+
+        if getattr(obj, "valid", True) is False:
+            return is_company_owner
+
+        if creator_id is not None:
+            return is_creator or is_company_owner
+
+        return is_company_owner
 
 
 class CompanyAccessMixin:
@@ -123,12 +129,6 @@ class CompanyAccessMixin:
                 return True
         except Exception:
             pass
-
-        members = getattr(company, "members", None) or []
-        uid = str(user.id)
-        for m in members:
-            if str(m.get("id")) == uid:
-                return True
         return False
 
     def _user_companies_qs(self, user):
@@ -139,20 +139,10 @@ class CompanyAccessMixin:
 
         CompanyMember = apps.get_model("crm", "CompanyMember")
         try:
-            company_ids = CompanyMember.objects.filter(user=user).values_list("company_id", flat=True)
+            company_ids = list(CompanyMember.objects.filter(user=user).values_list("company_id", flat=True))
         except Exception:
             company_ids = []
 
         if company_ids:
-            return Company.objects.filter(id__in=list(company_ids))
-
-        matching = []
-        for company in Company.objects.all():
-            members = company.members or []
-            for m in members:
-                if str(m.get("id")) == str(user.id):
-                    matching.append(company.id)
-                    break
-        if not matching:
-            return Company.objects.none()
-        return Company.objects.filter(id__in=matching)
+            return Company.objects.filter(id__in=company_ids)
+        return Company.objects.none()
