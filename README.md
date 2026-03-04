@@ -99,6 +99,53 @@ Check:
 - frontend: `http://127.0.0.1:3333`
 - API docs: `http://127.0.0.1:9999/api/docs/`
 
+### 3) Local subdomains (`admin.`, `agent.`, `tenant.`) - dev only
+
+This section is for local development only.
+It applies to desktop development on Linux, macOS, and Windows.
+
+On first local start, the app is expected to work via these subdomains:
+- `admin.<ROOT_DOMAIN>`
+- `agent.<ROOT_DOMAIN>`
+- `tenant.<ROOT_DOMAIN>`
+
+For example, if `ROOT_DOMAIN=operoncrm.d`, use:
+- `admin.operoncrm.d`
+- `agent.operoncrm.d`
+- `tenant.operoncrm.d`
+
+You must add them to your hosts file.
+
+Linux (`/etc/hosts`):
+```bash
+sudo nano /etc/hosts
+```
+
+Add:
+```txt
+127.0.0.1 operoncrm.d
+127.0.0.1 admin.operoncrm.d
+127.0.0.1 agent.operoncrm.d
+127.0.0.1 tenant.operoncrm.d
+```
+
+macOS (`/private/etc/hosts`, `/etc/hosts` is an alias):
+```bash
+sudo nano /etc/hosts
+```
+
+Add the same entries as above.
+
+Windows (`C:\Windows\System32\drivers\etc\hosts`):
+1. Run Notepad as Administrator.
+2. Open `C:\Windows\System32\drivers\etc\hosts` (switch file type to `All Files`).
+3. Add the same entries as above and save.
+
+After that, open each subdomain URL directly in browser and work in that subdomain context.
+
+Note for WSL users:
+- if browser runs on Windows host, edit Windows hosts file (not WSL `/etc/hosts`).
+
 ## Local Run with Docker (Dev Stack)
 
 ```bash
@@ -126,6 +173,7 @@ Requirements for production:
 - set `DJANGO_SETTINGS_MODULE=config.settings.prod`
 - available PostgreSQL (not started by `docker-compose.yml`; expected external/separate DB)
 - valid DNS records for domains (`operoncrm.uz`, `api.operoncrm.uz`, etc.)
+- for subdomain routing in production, configure DNS subdomain records (A/AAAA or CNAME) for the required hosts; `hosts` file mapping is not used there
 
 SSL note:
 - due to limited infrastructure resources, a full wildcard SSL setup was not feasible in this project
