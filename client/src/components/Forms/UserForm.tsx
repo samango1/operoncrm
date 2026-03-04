@@ -7,10 +7,12 @@ import SelectOption from '../Inputs/SelectOption';
 import OptionalField from '@/components/Inputs/OptionalField';
 import OptionalSection from '@/components/Containers/OptionalSection';
 import { preferenceIds } from '@/lib/preferencesCookies';
-
-import { User, PlatformRole } from '@/types/api/users';
+import { User, PlatformRole, UserLanguage } from '@/types/api/users';
 import { createUser, updateUser, deleteUser } from '@/lib/api';
 import { formatLocalPhone, isLocalPhoneComplete, toFullPhoneNumber } from '@/lib/phone';
+import { decodeJwtPayload } from '@/lib/jwt';
+import { useCookies } from '@/hooks/useCookies';
+import { getLocale, setLocale, t } from '@/i18n';
 
 interface UserFormProps {
   user?: User | null;
@@ -23,16 +25,21 @@ interface FormState {
   phone: string;
   password: string;
   platform_role: PlatformRole | '';
+  preferences_lang: UserLanguage;
 }
 
 const roleOptions: PlatformRole[] = ['admin', 'agent', 'member'];
+const DEFAULT_USER_LANG: UserLanguage = 'en';
 
 const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
+  const cookies = useCookies();
+
   const [form, setForm] = useState<FormState>({
     name: '',
     phone: '',
     password: '',
     platform_role: '',
+    preferences_lang: DEFAULT_USER_LANG,
   });
 
   const [loading, setLoading] = useState(false);
@@ -46,6 +53,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
         phone: formatLocalPhone(String(user.phone ?? '')),
         password: '',
         platform_role: (user.platform_role as PlatformRole) ?? '',
+        preferences_lang: user.preferences?.lang ?? DEFAULT_USER_LANG,
       });
     } else {
       setForm({
@@ -53,6 +61,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
         phone: '',
         password: '',
         platform_role: '',
+        preferences_lang: DEFAULT_USER_LANG,
       });
     }
     setError(null);
@@ -61,8 +70,8 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!user && !form.password) errs.password = 'Пароль обязателен';
-    if (!isLocalPhoneComplete(form.phone)) errs.phone = 'Телефон должен содержать 9 цифр';
+    if (!user && !form.password) errs.password = t('ui.password_required');
+    if (!isLocalPhoneComplete(form.phone)) errs.phone = t('ui.phone_number_must_contain_9_digits');
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -72,10 +81,17 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
     setForm((prev) => ({ ...prev, [k]: value }));
     setFieldErrors((prev) => ({ ...prev, [k]: '' }));
   };
-  const handleSelectChange = (value: PlatformRole | '' | undefined) => {
+
+  const handleRoleChange = (value: PlatformRole | '' | undefined) => {
     if (value === undefined) return;
     setForm((prev) => ({ ...prev, platform_role: value }));
     setFieldErrors((prev) => ({ ...prev, platform_role: '' }));
+  };
+
+  const handleLanguageChange = (value: UserLanguage | '' | undefined) => {
+    if (!value) return;
+    setForm((prev) => ({ ...prev, preferences_lang: value }));
+    setFieldErrors((prev) => ({ ...prev, preferences_lang: '' }));
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -85,14 +101,23 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
 
     setLoading(true);
     try {
+      const currentUserLang = user?.preferences?.lang ?? DEFAULT_USER_LANG;
+      const shouldSendPreferences = user
+        ? form.preferences_lang !== currentUserLang
+        : form.preferences_lang !== DEFAULT_USER_LANG;
+
       const payload: Partial<User> = {
         name: form.name.trim(),
         phone: Number(toFullPhoneNumber(form.phone)),
         platform_role: form.platform_role as PlatformRole,
       };
 
+      if (shouldSendPreferences) {
+        payload.preferences = { lang: form.preferences_lang };
+      }
+
       if (form.password) {
-        (payload as any).password = form.password;
+        (payload as Partial<User> & { password: string }).password = form.password;
       }
 
       let resp: User;
@@ -102,10 +127,36 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
         resp = await createUser(payload);
       }
 
+      const accessToken = cookies.get('access');
+      const authPayload = decodeJwtPayload(accessToken);
+      const currentUserId = authPayload?.user_id ?? authPayload?.id;
+      const targetUserId = user?.id ?? resp.id;
+      const nextLang = (resp.preferences?.lang ??
+        (shouldSendPreferences ? form.preferences_lang : currentUserLang)) as UserLanguage;
+
+      if (
+        currentUserId &&
+        targetUserId &&
+        String(currentUserId) === String(targetUserId) &&
+        (nextLang === 'en' || nextLang === 'ru')
+      ) {
+        cookies.set('lang', nextLang, {
+          path: '/',
+          sameSite: 'lax',
+          secure: window.location.protocol === 'https:',
+        });
+        const shouldReload = getLocale() !== nextLang;
+        setLocale(nextLang);
+        if (shouldReload) {
+          window.location.reload();
+          return;
+        }
+      }
+
       if (onSuccess) onSuccess(resp);
     } catch (err: any) {
       console.error('UserForm submit error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при сохранении пользователя';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.error_saving_user');
       setError(String(msg));
     } finally {
       setLoading(false);
@@ -114,19 +165,17 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
 
   const handleDelete = async () => {
     if (!user || !user.id) return;
-    const ok = window.confirm('Вы уверены, что хотите удалить этого пользователя? Это действие невозможно отменить.');
+    const ok = window.confirm(t('ui.are_you_sure_you_want_to_delete_this_2'));
     if (!ok) return;
 
     setError(null);
     setLoading(true);
     try {
       await deleteUser(String(user.id));
-      if (onSuccess) {
-        onSuccess(user);
-      }
+      if (onSuccess) onSuccess(user);
     } catch (err: any) {
       console.error('UserForm delete error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при удалении пользователя';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.error_when_deleting_user');
       setError(String(msg));
     } finally {
       setLoading(false);
@@ -138,22 +187,27 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
     value: r,
   }));
 
+  const languageOptions: { label: string; value: UserLanguage }[] = [
+    { label: t('locale.english'), value: 'en' },
+    { label: t('locale.russian'), value: 'ru' },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
       {error && <div className='text-sm text-red-600'>{error}</div>}
 
       <InputDefault
-        label='ФИО'
+        label={t('ui.full_name')}
         name='fullname'
         value={form.name}
         onChange={(e) => handleChange('name')(e)}
-        placeholder='Иван Иванов'
+        placeholder={t('ui.ivan_ivanov')}
         error={fieldErrors.name}
         required
       />
 
       <InputDefault
-        label='Телефон'
+        label={t('ui.phone')}
         prewritten='+998'
         value={form.phone}
         name='phone'
@@ -168,22 +222,31 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
       />
 
       <SelectOption
-        label='Роль платформы'
+        label={t('ui.role_of_the_platform')}
         name='role'
-        placeholder='Выберите роль'
+        placeholder={t('ui.select_a_role')}
         options={selectOptions}
         value={form.platform_role}
-        onChange={handleSelectChange}
+        onChange={handleRoleChange}
         error={fieldErrors.platform_role}
         required
       />
 
-      {user ? (
-        <OptionalSection preferenceId={preferenceIds.optionalSection.userFormPassword}>
+      <OptionalSection preferenceId={preferenceIds.optionalSection.userFormExtra}>
+        <SelectOption
+          label={t('settings.interface_language')}
+          name='language'
+          placeholder={t('settings.select_language')}
+          options={languageOptions}
+          value={form.preferences_lang}
+          onChange={handleLanguageChange}
+        />
+
+        {user ? (
           <InputDefault
             label={
               <>
-                Пароль
+                {t('ui.password')}
                 <OptionalField />
               </>
             }
@@ -191,37 +254,39 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSuccess, onCancel }) => {
             type='password'
             value={form.password}
             onChange={(e) => handleChange('password')(e)}
-            placeholder='Оставьте пустым чтобы не менять'
+            placeholder={t('ui.leave_it_blank_so_as_not_to_change')}
             error={fieldErrors.password}
           />
-        </OptionalSection>
-      ) : (
+        ) : null}
+      </OptionalSection>
+
+      {!user ? (
         <InputDefault
-          label='Пароль'
+          label={t('ui.password')}
           name='password'
           type='password'
           value={form.password}
           onChange={(e) => handleChange('password')(e)}
-          placeholder='Введите пароль'
+          placeholder={t('ui.enter_your_password')}
           error={fieldErrors.password}
         />
-      )}
+      ) : null}
 
       <div className='flex justify-between'>
         <div>
-          {user && user.id && (
+          {user && user.id ? (
             <ButtonDefault type='button' variant='danger' onClick={handleDelete} disabled={loading}>
-              {loading ? 'Подожди...' : 'Удалить'}
+              {loading ? t('ui.wait') : t('ui.delete')}
             </ButtonDefault>
-          )}
+          ) : null}
         </div>
         <div className='flex gap-3'>
           <ButtonDefault type='button' variant='secondary' onClick={() => onCancel && onCancel()} disabled={loading}>
-            Отмена
+            {t('ui.cancel')}
           </ButtonDefault>
 
           <ButtonDefault type='submit' variant='positive' disabled={loading}>
-            {loading ? 'Сохраняю...' : user ? 'Сохранить' : 'Создать'}
+            {loading ? t('ui.saving') : user ? t('ui.save') : t('ui.create')}
           </ButtonDefault>
         </div>
       </div>

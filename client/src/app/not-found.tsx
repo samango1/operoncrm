@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
-
+import { t } from '@/i18n';
 export default function NotFound() {
   const router = useRouter();
   return (
@@ -10,10 +10,10 @@ export default function NotFound() {
       <div className='text-center max-w-md'>
         <h1 className='text-6xl font-bold mb-4'>404</h1>
 
-        <p className='text-lg text-muted-foreground mb-6'>Страница не найдена.</p>
+        <p className='text-lg text-muted-foreground mb-6'>{t('ui.page_not_found')}</p>
 
         <ButtonDefault variant='dark' onClick={() => router.push('/')}>
-          Вернуться на главную
+          {t('ui.return_to_home')}
         </ButtonDefault>
       </div>
     </div>

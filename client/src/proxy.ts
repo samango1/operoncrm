@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function base64UrlToBase64(input: string): string {
+  let str = input.replace(/-/g, '+').replace(/_/g, '/');
+  const mod = str.length % 4;
+  if (mod === 2) str += '==';
+  else if (mod === 3) str += '=';
+  else if (mod !== 0) str += '===';
+  return str;
+}
+
+function getLangFromAccessToken(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(base64UrlToBase64(payload)));
+    const lang = decoded?.lang;
+    if (lang === 'en' || lang === 'ru') return lang;
+  } catch {}
+  return null;
+}
+
 function getJwtExpiryDate(token: string): Date | undefined {
   try {
     const payload = token.split('.')[1];
@@ -45,6 +65,15 @@ function applyAccessCookie(response: NextResponse, access: string, secure: boole
     sameSite: 'lax',
     secure,
   });
+  const lang = getLangFromAccessToken(access);
+  if (lang) {
+    response.cookies.set('lang', lang, {
+      path: '/',
+      expires: expires ?? undefined,
+      sameSite: 'lax',
+      secure,
+    });
+  }
 }
 
 export default async function proxy(request: NextRequest) {
@@ -78,6 +107,7 @@ export default async function proxy(request: NextRequest) {
     const response = NextResponse.redirect(url);
     response.cookies.set('access', '', { path: '/', maxAge: 0 });
     response.cookies.set('refresh', '', { path: '/', maxAge: 0 });
+    response.cookies.set('lang', '', { path: '/', maxAge: 0 });
     return response;
   }
 

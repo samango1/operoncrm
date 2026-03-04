@@ -4,7 +4,7 @@ import React, { InputHTMLAttributes, useEffect, useMemo, useRef, useState } from
 import clsx from 'clsx';
 import type { SelectOption as OptionType } from './SelectOption';
 import InputDefault from './InputDefault';
-
+import { t } from '@/i18n';
 interface SelectMultipleProps<T extends string | number> extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
   'onChange' | 'value'
@@ -18,10 +18,9 @@ interface SelectMultipleProps<T extends string | number> extends Omit<
   disabled?: boolean;
   className?: string;
 }
-
 export default function SelectMultiple<T extends string | number>({
   label,
-  placeholder = 'Выберите значение',
+  placeholder = t('ui.select_value'),
   error,
   options,
   value = [],
@@ -34,7 +33,6 @@ export default function SelectMultiple<T extends string | number>({
   const [search, setSearch] = useState<string>('');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const filteredOptions = useMemo(() => {
     const selected = new Set((value ?? []).map((v) => String(v)));
     const base = options.filter((o) => !selected.has(String(o.value)));
@@ -42,7 +40,6 @@ export default function SelectMultiple<T extends string | number>({
     if (!query) return base;
     return base.filter((o) => o.label.toLowerCase().includes(query) || String(o.value).toLowerCase().includes(query));
   }, [options, value, search]);
-
   useEffect(() => {
     return () => {
       if (closeTimeoutRef.current) {
@@ -51,7 +48,6 @@ export default function SelectMultiple<T extends string | number>({
       }
     };
   }, []);
-
   const handleAdd = (opt: OptionType<T>) => {
     if (disabled || opt.disabled) return;
     if (value.some((v) => String(v) === String(opt.value))) return;
@@ -60,20 +56,16 @@ export default function SelectMultiple<T extends string | number>({
     setIsOpen(false);
     requestAnimationFrame(() => inputRef.current?.blur());
   };
-
   const handleRemove = (val: T) => {
     onChange(value.filter((v) => String(v) !== String(val)));
   };
-
   const handleFocus = () => {
     if (!disabled) setIsOpen(true);
   };
-
   const handleBlur = () => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     closeTimeoutRef.current = setTimeout(() => setIsOpen(false), 120);
   };
-
   return (
     <div className='flex flex-col'>
       {label && <label className='mb-1 text-md font-medium text-gray-700'>{label}</label>}
@@ -98,7 +90,7 @@ export default function SelectMultiple<T extends string | number>({
         {isOpen && !disabled && (
           <div className='absolute z-10 mt-1 w-full max-h-56 overflow-auto rounded-md border border-gray-200 bg-white shadow-sm'>
             {filteredOptions.length === 0 ? (
-              <div className='px-3 py-2 text-sm text-gray-500'>Ничего не найдено</div>
+              <div className='px-3 py-2 text-sm text-gray-500'>{t('ui.nothing_found')}</div>
             ) : (
               filteredOptions.map((opt) => (
                 <button
@@ -137,7 +129,9 @@ export default function SelectMultiple<T extends string | number>({
               <button
                 type='button'
                 onClick={() => handleRemove(val)}
-                aria-label={`Удалить ${labelText}`}
+                aria-label={t('ui.remove_value_0', {
+                  v0: labelText,
+                })}
                 className='w-5 h-5 rounded-full flex items-center cursor-pointer justify-center hover:bg-red-200 transition'
               >
                 ×

@@ -3,7 +3,7 @@
 import React, { ReactNode, useEffect } from 'react';
 import clsx from 'clsx';
 import ButtonDefault from '../Buttons/ButtonDefault';
-
+import { t } from '@/i18n';
 type ModalWindowDefaultProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -11,7 +11,6 @@ type ModalWindowDefaultProps = {
   showCloseIcon?: boolean;
   className?: string;
 };
-
 export default function ModalWindowDefault({
   isOpen,
   onClose,
@@ -26,7 +25,6 @@ export default function ModalWindowDefault({
     if (isOpen) window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
@@ -35,9 +33,7 @@ export default function ModalWindowDefault({
       document.body.style.overflow = prev;
     };
   }, [isOpen]);
-
   if (!isOpen) return null;
-
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 bg-opacity-50 p-4 sm:p-6' onClick={onClose}>
       <div
@@ -51,7 +47,7 @@ export default function ModalWindowDefault({
         onClick={(e) => e.stopPropagation()}
       >
         {showCloseIcon && (
-          <ButtonDefault onClick={onClose} className='absolute top-5 right-5' aria-label='Закрыть' variant='dark'>
+          <ButtonDefault onClick={onClose} className='absolute top-5 right-5' aria-label={t('ui.close')} variant='dark'>
             &#10005;
           </ButtonDefault>
         )}

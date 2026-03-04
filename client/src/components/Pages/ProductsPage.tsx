@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Product } from '@/types/api/products';
 import type { Company } from '@/types/api/companies';
 import { getCompanies, getCompanyBySlug, getCompanyProducts, getCompanyProductById } from '@/lib/api';
-
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
@@ -13,13 +12,11 @@ import SearchInput from '@/components/Inputs/SearchInput';
 import SelectOption from '@/components/Inputs/SelectOption';
 import ProductForm from '@/components/Forms/ProductForm';
 import { formatMoney, formatMeasure } from '@/lib/decimal';
-
 import { Pencil, Eye } from 'lucide-react';
-
+import { t } from '@/i18n';
 type ProductsPageProps = {
   tenantSlug?: string;
 };
-
 export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -27,59 +24,57 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
   const [companyLoading, setCompanyLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-
   const isTenantMode = Boolean(tenantSlug);
-
   const fetchCompanies = async () => {
     try {
-      const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
+      const companiesRes = await getCompanies({
+        page: 1,
+        page_size: 1000,
+      });
       setCompanies(companiesRes.results as Company[]);
     } catch (err) {
       console.error('fetchCompanies error:', err);
-      setError('Не удалось загрузить компании');
+      setError(t('ui.failed_to_load_companies'));
     }
   };
-
   const fetchProducts = async (companyId: string, page = currentPage, ps = pageSize, search = globalSearch) => {
     if (!companyId) {
       setProducts([]);
       setTotalCount(0);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
-      const res = await getCompanyProducts(companyId, { page, page_size: ps, search });
+      const res = await getCompanyProducts(companyId, {
+        page,
+        page_size: ps,
+        search,
+      });
       setProducts(res.results as Product[]);
       setTotalCount(res.count);
     } catch (err) {
       console.error('fetchProducts error:', err);
-      setError('Не удалось загрузить продукты');
+      setError(t('ui.failed_to_load_products'));
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (isTenantMode) return;
     fetchCompanies();
   }, [isTenantMode]);
-
   useEffect(() => {
     if (!tenantSlug) return;
     const fetchTenantCompany = async () => {
@@ -93,7 +88,7 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
         setSelectedCompanyId(companyRes?.id ? String(companyRes.id) : undefined);
       } catch (err) {
         console.error('getCompanyBySlug error:', err);
-        setError('Не удалось загрузить компанию');
+        setError(t('ui.failed_to_load_company'));
         setTenantCompany(null);
         setSelectedCompanyId(undefined);
       } finally {
@@ -102,7 +97,6 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
     };
     fetchTenantCompany();
   }, [tenantSlug]);
-
   useEffect(() => {
     if (selectedCompanyId) {
       fetchProducts(selectedCompanyId, currentPage, pageSize, globalSearch);
@@ -111,19 +105,16 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
       setTotalCount(0);
     }
   }, [selectedCompanyId, currentPage, pageSize, globalSearch]);
-
   const selectedCompany = useMemo(() => {
     if (isTenantMode) return tenantCompany ?? undefined;
     if (!selectedCompanyId) return undefined;
     return companies.find((c) => String(c.id) === String(selectedCompanyId));
   }, [isTenantMode, tenantCompany, selectedCompanyId, companies]);
-
   const renderStock = (qty?: number) => {
     if (qty === undefined || qty === null) return '';
     if (Number(qty) === -1) return '∞';
     return String(qty);
   };
-
   const openViewModal = async (productId: string) => {
     if (!selectedCompanyId) return;
     setIsModalOpen(true);
@@ -136,12 +127,11 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
       setSelectedProduct(item as Product);
     } catch (err) {
       console.error('getCompanyProductById error:', err);
-      setModalError('Не удалось загрузить продукт');
+      setModalError(t('ui.failed_to_load_product'));
     } finally {
       setModalLoading(false);
     }
   };
-
   const openEditModal = async (productId: string) => {
     if (!selectedCompanyId) return;
     setIsModalOpen(true);
@@ -154,24 +144,25 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
       setSelectedProduct(item as Product);
     } catch (err) {
       console.error('getCompanyProductById error:', err);
-      setModalError('Не удалось загрузить продукт');
+      setModalError(t('ui.failed_to_load_product'));
     } finally {
       setModalLoading(false);
     }
   };
-
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedProduct(null);
     setModalError(null);
     setIsEditing(false);
   };
-
   const columns: Column<Product>[] = [
-    { key: 'name', label: 'Название' },
+    {
+      key: 'name',
+      label: t('ui.title'),
+    },
     {
       key: 'price_currency',
-      label: 'Цена',
+      label: t('ui.price'),
       render: (r) => {
         const formatted = formatMoney(r.price);
         return [formatted, r.currency].filter(Boolean).join(' ');
@@ -179,18 +170,21 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
     },
     {
       key: 'stock_quantity',
-      label: 'Остаток',
+      label: t('ui.remainder'),
       render: (r) => renderStock(r.stock_quantity),
     },
-    { key: 'unit', label: 'Ед. изм.' },
+    {
+      key: 'unit',
+      label: t('ui.unit'),
+    },
     {
       key: 'active',
-      label: 'Активен',
-      render: (r) => (r.active ? 'Да' : 'Нет'),
+      label: t('ui.active'),
+      render: (r) => (r.active ? t('ui.yes') : t('ui.no')),
     },
     {
       key: 'actions',
-      label: 'Действия',
+      label: t('ui.actions'),
       render: (row: Product) => (
         <div className='flex gap-2'>
           <ButtonDefault
@@ -217,20 +211,16 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
       className: 'w-40',
     },
   ];
-
   const openCreate = () => {
     setIsCreateOpen(true);
   };
-
   const closeCreate = () => {
     setIsCreateOpen(false);
   };
-
   const onCreated = async () => {
     closeCreate();
     if (selectedCompanyId) await fetchProducts(selectedCompanyId, currentPage, pageSize, globalSearch);
   };
-
   const handlePageChange = (page: number, newPageSize?: number) => {
     if (newPageSize && newPageSize !== pageSize) {
       setPageSize(newPageSize);
@@ -239,34 +229,34 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
       setCurrentPage(page);
     }
   };
-
   const handleSearch = (q: string) => {
     setGlobalSearch(q);
     setCurrentPage(1);
   };
-
   const companyOptions = useMemo(() => {
     return companies.map((c) => ({
       value: String(c.id),
       label: c.name || c.slug || String(c.id),
     }));
   }, [companies]);
-
   const headerSubtitle = isTenantMode
     ? companyLoading
-      ? 'Загрузка...'
+      ? t('ui.loading')
       : tenantCompany
-        ? `Всего продуктов: ${totalCount}`
-        : 'Не удалось определить компанию'
+        ? t('ui.total_products_value_0', {
+            v0: totalCount,
+          })
+        : t('ui.could_not_determine_company')
     : selectedCompanyId
-      ? `Всего продуктов: ${totalCount}`
-      : 'Выберите компанию для просмотра продуктов';
-
+      ? t('ui.total_products_value_0', {
+          v0: totalCount,
+        })
+      : t('ui.select_a_company_to_view_products');
   return (
     <>
       <section className='mb-6 flex justify-between items-center'>
         <div>
-          <h1 className='text-2xl font-semibold'>Продукты</h1>
+          <h1 className='text-2xl font-semibold'>{t('ui.products_2')}</h1>
           <p className='text-sm text-gray-500'>{headerSubtitle}</p>
         </div>
 
@@ -275,13 +265,13 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
           variant='positive'
           onClick={() => {
             if (!selectedCompanyId) {
-              alert(isTenantMode ? 'Компания не найдена' : 'Сначала выберите компанию');
+              alert(isTenantMode ? t('ui.company_not_found') : t('ui.first_select_a_company'));
               return;
             }
             openCreate();
           }}
         >
-          Добавить
+          {t('ui.add')}
         </ButtonDefault>
       </section>
 
@@ -289,8 +279,8 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
         {!isTenantMode && (
           <div>
             <SelectOption
-              label='Компания'
-              placeholder='Выберите компанию'
+              label={t('ui.company')}
+              placeholder={t('ui.select_a_company')}
               options={companyOptions}
               value={selectedCompanyId}
               onChange={(value) => {
@@ -304,7 +294,11 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
 
         {(isTenantMode || selectedCompanyId) && (
           <div className='flex items-center justify-between gap-4'>
-            <SearchInput initialValue={globalSearch} onSearch={handleSearch} placeholder='Поиск по названию и описанию' />
+            <SearchInput
+              initialValue={globalSearch}
+              onSearch={handleSearch}
+              placeholder={t('ui.search_by_title_and_description')}
+            />
           </div>
         )}
       </div>
@@ -313,21 +307,30 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
 
       {!selectedCompanyId ? (
         <div className='text-gray-600 p-6 bg-white/5 rounded'>
-          {isTenantMode ? 'Компания не найдена' : 'Выберите компанию для просмотра продуктов'}
+          {isTenantMode ? t('ui.company_not_found') : t('ui.select_a_company_to_view_products')}
         </div>
       ) : loading ? (
-        <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
+        <div className='p-6 bg-white/5 rounded text-gray-500'>{t('ui.loading')}</div>
       ) : products.length === 0 ? (
         <div className='text-gray-600 p-6 bg-white/5 rounded'>
-          {globalSearch ? 'Нет продуктов, соответствующих запросу.' : 'Нет продуктов для этой компании.'}
+          {globalSearch
+            ? t('ui.there_are_no_products_matching_your_request_2')
+            : t('ui.there_are_no_products_for_this_company')}
         </div>
       ) : (
         <section className='space-y-4'>
           {!isTenantMode && (
             <div className='flex justify-between items-center mb-3'>
               <div>
-                <h2 className='text-lg font-medium'>{selectedCompany?.name || `Компания ${selectedCompanyId}`}</h2>
-                <div className='text-sm text-gray-500'>Продуктов: {totalCount}</div>
+                <h2 className='text-lg font-medium'>
+                  {selectedCompany?.name ||
+                    t('ui.company_value_0', {
+                      v0: selectedCompanyId,
+                    })}
+                </h2>
+                <div className='text-sm text-gray-500'>
+                  {t('ui.products')} {totalCount}
+                </div>
               </div>
             </div>
           )}
@@ -342,7 +345,7 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
 
       <ModalWindowDefault isOpen={isCreateOpen} onClose={closeCreate} showCloseIcon>
         <div>
-          <h2 className='text-xl font-semibold mb-4'>Новый продукт</h2>
+          <h2 className='text-xl font-semibold mb-4'>{t('ui.new_product')}</h2>
 
           <ProductForm fixedCompanyId={selectedCompanyId} onCancel={closeCreate} onSuccess={onCreated} />
         </div>
@@ -353,10 +356,10 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
           {isEditing ? (
             <>
               <h2 className='text-xl font-semibold mb-4'>
-                {selectedProduct ? 'Редактирование продукта' : 'Загрузка продукта...'}
+                {selectedProduct ? t('ui.editing_a_product') : t('ui.loading_product')}
               </h2>
 
-              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+              {modalLoading && <div className='text-sm text-gray-500'>{t('ui.loading')}</div>}
 
               {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
 
@@ -376,9 +379,9 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
             </>
           ) : (
             <>
-              <h2 className='text-xl font-semibold mb-4'>Просмотр продукта</h2>
+              <h2 className='text-xl font-semibold mb-4'>{t('ui.view_product')}</h2>
 
-              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+              {modalLoading && <div className='text-sm text-gray-500'>{t('ui.loading')}</div>}
 
               {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
 
@@ -388,37 +391,37 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
                     <strong>ID:</strong> {selectedProduct.id}
                   </div>
                   <div>
-                    <strong>Название:</strong> {selectedProduct.name}
+                    <strong>{t('ui.title_2')}</strong> {selectedProduct.name}
                   </div>
                   <div>
-                    <strong>Описание:</strong> {selectedProduct.description}
+                    <strong>{t('ui.description_2')}</strong> {selectedProduct.description}
                   </div>
                   <div>
-                    <strong>Цена:</strong> {formatMoney(selectedProduct.price)} {selectedProduct.currency}
+                    <strong>{t('ui.price_2')}</strong> {formatMoney(selectedProduct.price)} {selectedProduct.currency}
                   </div>
                   <div>
-                    <strong>Остаток:</strong> {renderStock(selectedProduct.stock_quantity)}
+                    <strong>{t('ui.remaining_2')}</strong> {renderStock(selectedProduct.stock_quantity)}
                   </div>
                   <div>
-                    <strong>Мин. остаток:</strong> {selectedProduct.min_stock_level}
+                    <strong>{t('ui.min_balance')}</strong> {selectedProduct.min_stock_level}
                   </div>
                   <div>
-                    <strong>Ед. изм.:</strong> {selectedProduct.unit}
+                    <strong>{t('ui.unit_2')}</strong> {selectedProduct.unit}
                   </div>
                   <div>
-                    <strong>Себестоимость:</strong> {formatMoney(selectedProduct.cost_price ?? '')}
+                    <strong>{t('ui.cost_2')}</strong> {formatMoney(selectedProduct.cost_price ?? '')}
                   </div>
                   <div>
-                    <strong>Вес, кг:</strong> {formatMeasure(selectedProduct.weight ?? '')}
+                    <strong>{t('ui.weight_kg_2')}</strong> {formatMeasure(selectedProduct.weight ?? '')}
                   </div>
                   <div>
-                    <strong>Объем, м³:</strong> {formatMeasure(selectedProduct.volume ?? '')}
+                    <strong>{t('ui.volume_m_2')}</strong> {formatMeasure(selectedProduct.volume ?? '')}
                   </div>
                   <div>
-                    <strong>Активен:</strong> {selectedProduct.active ? 'Да' : 'Нет'}
+                    <strong>{t('ui.active_2')}</strong> {selectedProduct.active ? t('ui.yes') : t('ui.no')}
                   </div>
                   <div>
-                    <strong>Компания:</strong>{' '}
+                    <strong>{t('ui.company_2')}</strong>{' '}
                     {selectedProduct.company
                       ? typeof selectedProduct.company === 'string'
                         ? selectedProduct.company
@@ -426,10 +429,10 @@ export default function ProductsPage({ tenantSlug }: ProductsPageProps) {
                       : ''}
                   </div>
                   <div>
-                    <strong>Создан:</strong> {selectedProduct.created_at ?? ''}
+                    <strong>{t('ui.created_by')}</strong> {selectedProduct.created_at ?? ''}
                   </div>
                   <div>
-                    <strong>Обновлен:</strong> {selectedProduct.updated_at ?? ''}
+                    <strong>{t('ui.updated_2')}</strong> {selectedProduct.updated_at ?? ''}
                   </div>
                 </div>
               )}

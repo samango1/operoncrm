@@ -32,6 +32,7 @@ export const preferenceIds = {
     serviceFormExtra: 'service-form-extra',
     servicePosExtra: 'service-pos-extra',
     userFormPassword: 'user-form-password',
+    userFormExtra: 'user-form-extra',
   },
 };
 

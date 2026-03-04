@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useCookies } from '@/hooks/useCookies';
 import { readOptionalSectionOpen, writeOptionalSectionOpen } from '@/lib/preferencesCookies';
-
+import { t } from '@/i18n';
 interface OptionalSectionProps {
   title?: string;
   defaultOpen?: boolean;
@@ -12,9 +12,8 @@ interface OptionalSectionProps {
   preferenceId?: string;
   children: React.ReactNode;
 }
-
 export default function OptionalSection({
-  title = 'Дополнительно',
+  title = t('ui.additional'),
   defaultOpen = false,
   className,
   preferenceId,
@@ -25,17 +24,14 @@ export default function OptionalSection({
   useEffect(() => {
     cookiesRef.current = cookies;
   }, [cookies]);
-
   const [isOpen, setIsOpen] = useState<boolean>(() => {
     if (!preferenceId) return defaultOpen;
     return readOptionalSectionOpen(cookiesRef.current, preferenceId, defaultOpen);
   });
-
   useEffect(() => {
     if (!preferenceId) return;
     writeOptionalSectionOpen(cookiesRef.current, preferenceId, isOpen);
   }, [isOpen, preferenceId]);
-
   return (
     <details
       className={clsx('rounded-md', className)}

@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Service } from '@/types/api/services';
 import type { Company } from '@/types/api/companies';
 import { getCompanies, getCompanyBySlug, getCompanyServices, getCompanyServiceById } from '@/lib/api';
-
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
@@ -13,28 +12,41 @@ import SearchInput from '@/components/Inputs/SearchInput';
 import SelectOption from '@/components/Inputs/SelectOption';
 import ServiceForm from '@/components/Forms/ServiceForm';
 import { formatMoney } from '@/lib/decimal';
-
 import { Pencil, Eye } from 'lucide-react';
-
+import { t } from '@/i18n';
 type ServicesPageProps = {
   tenantSlug?: string;
 };
-
 const formatDuration = (minutes?: number | null): string => {
   if (minutes === null || minutes === undefined) return '';
-  if (minutes === -1) return 'Одноразовая';
-  if (minutes < 60) return `${minutes} мин`;
+  if (minutes === -1) return t('ui.one_time');
+  if (minutes < 60)
+    return t('ui.value_0_min', {
+      v0: minutes,
+    });
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (minutes < 60 * 24) {
-    return mins ? `${hours} ч ${mins} мин` : `${hours} ч`;
+    return mins
+      ? t('ui.value_0_h_value_1_min', {
+          v0: hours,
+          v1: mins,
+        })
+      : t('ui.value_0_h', {
+          v0: hours,
+        });
   }
   const days = Math.floor(minutes / (60 * 24));
   const remainHours = Math.floor((minutes % (60 * 24)) / 60);
-  if (remainHours > 0) return `${days} д ${remainHours} ч`;
-  return `${days} д`;
+  if (remainHours > 0)
+    return t('ui.value_0_d_value_1_h', {
+      v0: days,
+      v1: remainHours,
+    });
+  return t('ui.value_0_d', {
+    v0: days,
+  });
 };
-
 export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -42,59 +54,57 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
   const [companyLoading, setCompanyLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-
   const isTenantMode = Boolean(tenantSlug);
-
   const fetchCompanies = async () => {
     try {
-      const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
+      const companiesRes = await getCompanies({
+        page: 1,
+        page_size: 1000,
+      });
       setCompanies(companiesRes.results as Company[]);
     } catch (err) {
       console.error('fetchCompanies error:', err);
-      setError('Не удалось загрузить компании');
+      setError(t('ui.failed_to_load_companies'));
     }
   };
-
   const fetchServices = async (companyId: string, page = currentPage, ps = pageSize, search = globalSearch) => {
     if (!companyId) {
       setServices([]);
       setTotalCount(0);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
-      const res = await getCompanyServices(companyId, { page, page_size: ps, search });
+      const res = await getCompanyServices(companyId, {
+        page,
+        page_size: ps,
+        search,
+      });
       setServices(res.results as Service[]);
       setTotalCount(res.count);
     } catch (err) {
       console.error('fetchServices error:', err);
-      setError('Не удалось загрузить услуги');
+      setError(t('ui.failed_to_load_services'));
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (isTenantMode) return;
     fetchCompanies();
   }, [isTenantMode]);
-
   useEffect(() => {
     if (!tenantSlug) return;
     const fetchTenantCompany = async () => {
@@ -108,7 +118,7 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
         setSelectedCompanyId(companyRes?.id ? String(companyRes.id) : undefined);
       } catch (err) {
         console.error('getCompanyBySlug error:', err);
-        setError('Не удалось загрузить компанию');
+        setError(t('ui.failed_to_load_company'));
         setTenantCompany(null);
         setSelectedCompanyId(undefined);
       } finally {
@@ -117,7 +127,6 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
     };
     fetchTenantCompany();
   }, [tenantSlug]);
-
   useEffect(() => {
     if (selectedCompanyId) {
       fetchServices(selectedCompanyId, currentPage, pageSize, globalSearch);
@@ -126,13 +135,11 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
       setTotalCount(0);
     }
   }, [selectedCompanyId, currentPage, pageSize, globalSearch]);
-
   const selectedCompany = useMemo(() => {
     if (isTenantMode) return tenantCompany ?? undefined;
     if (!selectedCompanyId) return undefined;
     return companies.find((c) => String(c.id) === String(selectedCompanyId));
   }, [isTenantMode, tenantCompany, selectedCompanyId, companies]);
-
   const openViewModal = async (serviceId: string) => {
     if (!selectedCompanyId) return;
     setIsModalOpen(true);
@@ -145,12 +152,11 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
       setSelectedService(item as Service);
     } catch (err) {
       console.error('getCompanyServiceById error:', err);
-      setModalError('Не удалось загрузить услугу');
+      setModalError(t('ui.failed_to_load_service'));
     } finally {
       setModalLoading(false);
     }
   };
-
   const openEditModal = async (serviceId: string) => {
     if (!selectedCompanyId) return;
     setIsModalOpen(true);
@@ -163,24 +169,25 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
       setSelectedService(item as Service);
     } catch (err) {
       console.error('getCompanyServiceById error:', err);
-      setModalError('Не удалось загрузить услугу');
+      setModalError(t('ui.failed_to_load_service'));
     } finally {
       setModalLoading(false);
     }
   };
-
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedService(null);
     setModalError(null);
     setIsEditing(false);
   };
-
   const columns: Column<Service>[] = [
-    { key: 'name', label: 'Название' },
+    {
+      key: 'name',
+      label: t('ui.title'),
+    },
     {
       key: 'price_currency',
-      label: 'Цена',
+      label: t('ui.price'),
       render: (r) => {
         const formatted = formatMoney(r.price);
         return [formatted, r.currency].filter(Boolean).join(' ');
@@ -188,17 +195,17 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
     },
     {
       key: 'duration',
-      label: 'Длительность',
+      label: t('ui.duration'),
       render: (r) => formatDuration(r.duration_minutes),
     },
     {
       key: 'active',
-      label: 'Активна',
-      render: (r) => (r.active ? 'Да' : 'Нет'),
+      label: t('ui.active_3'),
+      render: (r) => (r.active ? t('ui.yes') : t('ui.no')),
     },
     {
       key: 'actions',
-      label: 'Действия',
+      label: t('ui.actions'),
       render: (row: Service) => (
         <div className='flex gap-2'>
           <ButtonDefault
@@ -225,20 +232,16 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
       className: 'w-40',
     },
   ];
-
   const openCreate = () => {
     setIsCreateOpen(true);
   };
-
   const closeCreate = () => {
     setIsCreateOpen(false);
   };
-
   const onCreated = async () => {
     closeCreate();
     if (selectedCompanyId) await fetchServices(selectedCompanyId, currentPage, pageSize, globalSearch);
   };
-
   const handlePageChange = (page: number, newPageSize?: number) => {
     if (newPageSize && newPageSize !== pageSize) {
       setPageSize(newPageSize);
@@ -247,34 +250,34 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
       setCurrentPage(page);
     }
   };
-
   const handleSearch = (q: string) => {
     setGlobalSearch(q);
     setCurrentPage(1);
   };
-
   const companyOptions = useMemo(() => {
     return companies.map((c) => ({
       value: String(c.id),
       label: c.name || c.slug || String(c.id),
     }));
   }, [companies]);
-
   const headerSubtitle = isTenantMode
     ? companyLoading
-      ? 'Загрузка...'
+      ? t('ui.loading')
       : tenantCompany
-        ? `Всего услуг: ${totalCount}`
-        : 'Не удалось определить компанию'
+        ? t('ui.total_services_value_0', {
+            v0: totalCount,
+          })
+        : t('ui.could_not_determine_company')
     : selectedCompanyId
-      ? `Всего услуг: ${totalCount}`
-      : 'Выберите компанию для просмотра услуг';
-
+      ? t('ui.total_services_value_0', {
+          v0: totalCount,
+        })
+      : t('ui.select_a_company_to_view_services');
   return (
     <>
       <section className='mb-6 flex justify-between items-center'>
         <div>
-          <h1 className='text-2xl font-semibold'>Услуги</h1>
+          <h1 className='text-2xl font-semibold'>{t('ui.services_3')}</h1>
           <p className='text-sm text-gray-500'>{headerSubtitle}</p>
         </div>
 
@@ -283,13 +286,13 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
           variant='positive'
           onClick={() => {
             if (!selectedCompanyId) {
-              alert(isTenantMode ? 'Компания не найдена' : 'Сначала выберите компанию');
+              alert(isTenantMode ? t('ui.company_not_found') : t('ui.first_select_a_company'));
               return;
             }
             openCreate();
           }}
         >
-          Добавить
+          {t('ui.add')}
         </ButtonDefault>
       </section>
 
@@ -297,8 +300,8 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
         {!isTenantMode && (
           <div>
             <SelectOption
-              label='Компания'
-              placeholder='Выберите компанию'
+              label={t('ui.company')}
+              placeholder={t('ui.select_a_company')}
               options={companyOptions}
               value={selectedCompanyId}
               onChange={(v) => {
@@ -312,7 +315,11 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
 
         {(isTenantMode || selectedCompanyId) && (
           <div className='flex items-center justify-between gap-4'>
-            <SearchInput initialValue={globalSearch} onSearch={handleSearch} placeholder='Поиск по названию и описанию' />
+            <SearchInput
+              initialValue={globalSearch}
+              onSearch={handleSearch}
+              placeholder={t('ui.search_by_title_and_description')}
+            />
           </div>
         )}
       </div>
@@ -321,21 +328,30 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
 
       {!selectedCompanyId ? (
         <div className='text-gray-600 p-6 bg-white/5 rounded'>
-          {isTenantMode ? 'Компания не найдена' : 'Выберите компанию для просмотра услуг'}
+          {isTenantMode ? t('ui.company_not_found') : t('ui.select_a_company_to_view_services')}
         </div>
       ) : loading ? (
-        <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
+        <div className='p-6 bg-white/5 rounded text-gray-500'>{t('ui.loading')}</div>
       ) : services.length === 0 ? (
         <div className='text-gray-600 p-6 bg-white/5 rounded'>
-          {globalSearch ? 'Нет услуг, соответствующих запросу.' : 'Нет услуг для этой компании.'}
+          {globalSearch
+            ? t('ui.there_are_no_services_matching_your_request_2')
+            : t('ui.there_are_no_services_for_this_company')}
         </div>
       ) : (
         <section className='space-y-4'>
           {!isTenantMode && (
             <div className='flex justify-between items-center mb-3'>
               <div>
-                <h2 className='text-lg font-medium'>{selectedCompany?.name || `Компания ${selectedCompanyId}`}</h2>
-                <div className='text-sm text-gray-500'>Услуг: {totalCount}</div>
+                <h2 className='text-lg font-medium'>
+                  {selectedCompany?.name ||
+                    t('ui.company_value_0', {
+                      v0: selectedCompanyId,
+                    })}
+                </h2>
+                <div className='text-sm text-gray-500'>
+                  {t('ui.services_2')} {totalCount}
+                </div>
               </div>
             </div>
           )}
@@ -350,7 +366,7 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
 
       <ModalWindowDefault isOpen={isCreateOpen} onClose={closeCreate} showCloseIcon>
         <div>
-          <h2 className='text-xl font-semibold mb-4'>Новая услуга</h2>
+          <h2 className='text-xl font-semibold mb-4'>{t('ui.new_service')}</h2>
           <ServiceForm fixedCompanyId={selectedCompanyId} onCancel={closeCreate} onSuccess={onCreated} />
         </div>
       </ModalWindowDefault>
@@ -359,9 +375,11 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
         <div>
           {isEditing ? (
             <>
-              <h2 className='text-xl font-semibold mb-4'>{selectedService ? 'Редактирование услуги' : 'Загрузка услуги...'}</h2>
+              <h2 className='text-xl font-semibold mb-4'>
+                {selectedService ? t('ui.editing_a_service') : t('ui.loading_service')}
+              </h2>
 
-              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+              {modalLoading && <div className='text-sm text-gray-500'>{t('ui.loading')}</div>}
 
               {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
 
@@ -380,9 +398,9 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
             </>
           ) : (
             <>
-              <h2 className='text-xl font-semibold mb-4'>Просмотр услуги</h2>
+              <h2 className='text-xl font-semibold mb-4'>{t('ui.view_service')}</h2>
 
-              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+              {modalLoading && <div className='text-sm text-gray-500'>{t('ui.loading')}</div>}
 
               {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
 
@@ -392,25 +410,25 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
                     <strong>ID:</strong> {selectedService.id}
                   </div>
                   <div>
-                    <strong>Название:</strong> {selectedService.name}
+                    <strong>{t('ui.title_2')}</strong> {selectedService.name}
                   </div>
                   <div>
-                    <strong>Описание:</strong> {selectedService.description}
+                    <strong>{t('ui.description_2')}</strong> {selectedService.description}
                   </div>
                   <div>
-                    <strong>Цена:</strong> {formatMoney(selectedService.price)} {selectedService.currency}
+                    <strong>{t('ui.price_2')}</strong> {formatMoney(selectedService.price)} {selectedService.currency}
                   </div>
                   <div>
-                    <strong>Длительность:</strong> {formatDuration(selectedService.duration_minutes)}
+                    <strong>{t('ui.duration_2')}</strong> {formatDuration(selectedService.duration_minutes)}
                   </div>
                   <div>
-                    <strong>Себестоимость:</strong> {formatMoney(selectedService.cost_price ?? '')}
+                    <strong>{t('ui.cost_2')}</strong> {formatMoney(selectedService.cost_price ?? '')}
                   </div>
                   <div>
-                    <strong>Активна:</strong> {selectedService.active ? 'Да' : 'Нет'}
+                    <strong>{t('ui.active_4')}</strong> {selectedService.active ? t('ui.yes') : t('ui.no')}
                   </div>
                   <div>
-                    <strong>Компания:</strong>{' '}
+                    <strong>{t('ui.company_2')}</strong>{' '}
                     {selectedService.company
                       ? typeof selectedService.company === 'string'
                         ? selectedService.company
@@ -418,10 +436,10 @@ export default function ServicesPage({ tenantSlug }: ServicesPageProps) {
                       : ''}
                   </div>
                   <div>
-                    <strong>Создана:</strong> {selectedService.created_at ?? ''}
+                    <strong>{t('ui.created_3')}</strong> {selectedService.created_at ?? ''}
                   </div>
                   <div>
-                    <strong>Обновлена:</strong> {selectedService.updated_at ?? ''}
+                    <strong>{t('ui.updated_3')}</strong> {selectedService.updated_at ?? ''}
                   </div>
                 </div>
               )}

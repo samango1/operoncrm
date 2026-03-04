@@ -22,7 +22,7 @@ import {
   updateCompanyProduct,
   deleteCompanyProduct,
 } from '@/lib/api';
-
+import { t } from '@/i18n';
 type Props = {
   product?: Product | null;
   onCancel: () => void;
@@ -30,13 +30,11 @@ type Props = {
   fixedCompanyId?: string;
   companiesOverride?: Company[];
 };
-
 const extractCompanyId = (company?: Company | string): string | undefined => {
   if (!company) return undefined;
   if (typeof company === 'string') return company;
   return company.id ? String(company.id) : undefined;
 };
-
 export default function ProductForm({ product, onCancel, onSuccess, fixedCompanyId, companiesOverride }: Props) {
   const [name, setName] = useState<string>(product?.name ?? '');
   const [description, setDescription] = useState<string>(product?.description ?? '');
@@ -51,20 +49,16 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
   const [weight, setWeight] = useState<string>(toDecimalString(product?.weight ?? ''));
   const [volume, setVolume] = useState<string>(toDecimalString(product?.volume ?? ''));
   const [companyId, setCompanyId] = useState<string | undefined>(fixedCompanyId ?? extractCompanyId(product?.company));
-
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
-
   const deriveStockMode = (value: number | ''): 'unlimited' | 'out' | 'in' => {
     if (value === -1) return 'unlimited';
     if (value === '' || Number(value) <= 0) return 'out';
     return 'in';
   };
-
   useEffect(() => {
     const nextStockQuantity = product?.stock_quantity ?? 0;
     setName(product?.name ?? '');
@@ -81,7 +75,6 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
     setVolume(toDecimalString(product?.volume ?? ''));
     setCompanyId(fixedCompanyId ?? extractCompanyId(product?.company));
   }, [product, fixedCompanyId]);
-
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -97,7 +90,10 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       }
       setLoadingCompanies(true);
       try {
-        const res = await getCompanies({ page: 1, page_size: 1000 });
+        const res = await getCompanies({
+          page: 1,
+          page_size: 1000,
+        });
         if (!mounted) return;
         setCompanies(res.results ?? res);
       } catch (e) {
@@ -110,97 +106,123 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       mounted = false;
     };
   }, [companiesOverride, fixedCompanyId]);
-
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
   }));
-
   const currencyOptions: OptionType<ProductCurrency>[] = [
-    { value: 'UZS', label: 'UZS' },
-    { value: 'USD', label: 'USD' },
+    {
+      value: 'UZS',
+      label: 'UZS',
+    },
+    {
+      value: 'USD',
+      label: 'USD',
+    },
   ];
-
   const unitOptions: OptionType<ProductUnit>[] = [
-    { value: 'kilogram', label: 'Килограмм' },
-    { value: 'piece', label: 'Штука' },
-    { value: 'meter', label: 'Метр' },
-    { value: 'liter', label: 'Литр' },
+    {
+      value: 'kilogram',
+      label: t('ui.kilogram'),
+    },
+    {
+      value: 'piece',
+      label: t('ui.piece'),
+    },
+    {
+      value: 'meter',
+      label: t('ui.meter'),
+    },
+    {
+      value: 'liter',
+      label: t('ui.liter'),
+    },
   ];
-
   const stockModeOptions: OptionType<'unlimited' | 'out' | 'in'>[] = [
-    { value: 'unlimited', label: 'Неограничен' },
-    { value: 'out', label: 'Закончился' },
-    { value: 'in', label: 'Есть в наличии' },
+    {
+      value: 'unlimited',
+      label: t('ui.unlimited'),
+    },
+    {
+      value: 'out',
+      label: t('ui.ended'),
+    },
+    {
+      value: 'in',
+      label: t('ui.in_stock_2'),
+    },
   ];
-
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
     setCompanyError(null);
-
     if (!name.trim()) {
-      setError('Название обязательно');
+      setError(t('ui.title_required'));
       return;
     }
-
     if (!description.trim()) {
-      setError('Описание обязательно');
+      setError(t('ui.description_required'));
       return;
     }
-
     if (!fixedCompanyId && !companyId) {
-      setCompanyError('Компания обязательна');
+      setCompanyError(t('ui.company_is_required'));
       return;
     }
-
     const normalizedPrice = normalizeDecimalInput(price);
-    if (!isValidDecimal(normalizedPrice, { maxFractionDigits: 2 }) || compareDecimalStrings(normalizedPrice, '0') <= 0) {
-      setError('Цена должна быть больше 0');
+    if (
+      !isValidDecimal(normalizedPrice, {
+        maxFractionDigits: 2,
+      }) ||
+      compareDecimalStrings(normalizedPrice, '0') <= 0
+    ) {
+      setError(t('ui.price_must_be_greater_than_0'));
       return;
     }
-
     if (stockMode === 'in' && (stockQuantity === '' || Number(stockQuantity) < 1)) {
-      setError('Остаток должен быть больше 0');
+      setError(t('ui.the_remainder_must_be_greater_than_0'));
       return;
     }
     if (stockMode !== 'in' && stockQuantity === '' && stockMode !== 'out') {
-      setError('Остаток должен быть -1 или больше');
+      setError(t('ui.the_remainder_must_be_1_or_greater'));
       return;
     }
-
     if (minStockLevel === '' || Number(minStockLevel) <= 0) {
-      setError('Минимальный остаток должен быть больше 0');
+      setError(t('ui.the_minimum_balance_must_be_greater_than_0'));
       return;
     }
-
     const normalizedCostPrice = costPrice === '' ? '' : normalizeDecimalInput(costPrice);
     if (
       costPrice !== '' &&
-      (!isValidDecimal(normalizedCostPrice, { maxFractionDigits: 2 }) || compareDecimalStrings(normalizedCostPrice, '0') <= 0)
+      (!isValidDecimal(normalizedCostPrice, {
+        maxFractionDigits: 2,
+      }) ||
+        compareDecimalStrings(normalizedCostPrice, '0') <= 0)
     ) {
-      setError('Себестоимость должна быть больше 0');
+      setError(t('ui.cost_must_be_greater_than_0'));
       return;
     }
-
     const normalizedWeight = weight === '' ? '' : normalizeDecimalInput(weight);
     if (
       weight !== '' &&
-      (!isValidDecimal(normalizedWeight, { maxFractionDigits: 3 }) || compareDecimalStrings(normalizedWeight, '0') < 0)
+      (!isValidDecimal(normalizedWeight, {
+        maxFractionDigits: 3,
+      }) ||
+        compareDecimalStrings(normalizedWeight, '0') < 0)
     ) {
-      setError('Вес должен быть 0 или больше');
+      setError(t('ui.weight_must_be_0_or_more'));
       return;
     }
-
     const normalizedVolume = volume === '' ? '' : normalizeDecimalInput(volume);
     if (
       volume !== '' &&
-      (!isValidDecimal(normalizedVolume, { maxFractionDigits: 3 }) || compareDecimalStrings(normalizedVolume, '0') < 0)
+      (!isValidDecimal(normalizedVolume, {
+        maxFractionDigits: 3,
+      }) ||
+        compareDecimalStrings(normalizedVolume, '0') < 0)
     ) {
-      setError('Объем должен быть 0 или больше');
+      setError(t('ui.volume_must_be_0_or_greater'));
       return;
     }
-
     setSaving(true);
     try {
       const payload: Partial<Product> = {
@@ -217,7 +239,6 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
         volume: normalizedVolume === '' ? undefined : normalizedVolume,
         company: companyId ?? undefined,
       };
-
       let resp: Product;
       if (fixedCompanyId) {
         if (product && product.id) {
@@ -230,22 +251,19 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       } else {
         resp = await createProduct(payload);
       }
-
       await onSuccess(resp);
     } catch (err: any) {
       console.error('save product error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Не удалось сохранить продукт';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.failed_to_save_product');
       setError(String(msg));
     } finally {
       setSaving(false);
     }
   };
-
   const handleDelete = async () => {
     if (!product || !product.id) return;
-    const ok = window.confirm('Вы уверены, что хотите удалить этот продукт? Это действие невозможно отменить.');
+    const ok = window.confirm(t('ui.are_you_sure_you_want_to_remove_this'));
     if (!ok) return;
-
     setError(null);
     setSaving(true);
     try {
@@ -259,36 +277,41 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       }
     } catch (err: any) {
       console.error('ProductForm delete error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при удалении продукта';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.error_uninstalling_product');
       setError(String(msg));
     } finally {
       setSaving(false);
     }
   };
-
   return (
     <form
       onSubmit={handleSubmit}
       className='space-y-3 md:space-y-4 max-h-[70vh] overflow-y-auto px-1 md:max-h-none md:overflow-visible'
     >
-      <InputDefault value={name} label='Название' onChange={(e) => setName(e.target.value)} required />
+      <InputDefault value={name} label={t('ui.title')} onChange={(e) => setName(e.target.value)} required />
 
       <div>
-        <TextAreaDefault label='Описание' value={description} onChange={(e) => setDescription(e.target.value)} />
+        <TextAreaDefault label={t('ui.description')} value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3'>
         <InputDefault
-          label='Цена'
+          label={t('ui.price')}
           type='text'
           value={price}
-          onChange={(e) => setPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+          onChange={(e) =>
+            setPrice(
+              maskDecimalInput(e.target.value, {
+                maxFractionDigits: 2,
+              })
+            )
+          }
           inputMode='decimal'
           required
         />
 
         <SelectOption
-          label='Валюта'
+          label={t('ui.currency')}
           options={currencyOptions}
           value={currency}
           onChange={(v) => setCurrency((v as ProductCurrency) ?? 'UZS')}
@@ -297,7 +320,7 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3'>
         <SelectOption
-          label='Остаток'
+          label={t('ui.remainder')}
           options={stockModeOptions}
           value={stockMode}
           onChange={(v) => {
@@ -311,7 +334,7 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
           }}
         />
         <InputDefault
-          label='Минимальный остаток'
+          label={t('ui.minimum_balance')}
           type='number'
           value={minStockLevel}
           onChange={(e) => setMinStockLevel(e.target.value === '' ? '' : Number(e.target.value))}
@@ -322,7 +345,7 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
 
       {stockMode === 'in' && (
         <InputDefault
-          label='Количество в наличии'
+          label={t('ui.quantity_in_stock')}
           type='number'
           value={stockQuantity}
           onChange={(e) => setStockQuantity(e.target.value === '' ? '' : Number(e.target.value))}
@@ -338,7 +361,12 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
       )}
 
       <div className='grid grid-cols-1 gap-2 md:gap-3'>
-        <SelectOption label='Ед. измерения' options={unitOptions} value={unit} onChange={(v) => setUnit(v as ProductUnit)} />
+        <SelectOption
+          label={t('ui.unit_of_measure')}
+          options={unitOptions}
+          value={unit}
+          onChange={(v) => setUnit(v as ProductUnit)}
+        />
       </div>
 
       <OptionalSection preferenceId={preferenceIds.optionalSection.productFormExtra}>
@@ -346,48 +374,66 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
           <InputDefault
             label={
               <>
-                Себестоимость
+                {t('ui.cost')}
                 <OptionalField />
               </>
             }
             type='text'
             value={costPrice}
-            onChange={(e) => setCostPrice(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+            onChange={(e) =>
+              setCostPrice(
+                maskDecimalInput(e.target.value, {
+                  maxFractionDigits: 2,
+                })
+              )
+            }
             inputMode='decimal'
           />
           <InputDefault
             label={
               <>
-                Вес, кг
+                {t('ui.weight_kg')}
                 <OptionalField />
               </>
             }
             type='text'
             value={weight}
-            onChange={(e) => setWeight(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
+            onChange={(e) =>
+              setWeight(
+                maskDecimalInput(e.target.value, {
+                  maxFractionDigits: 3,
+                })
+              )
+            }
             inputMode='decimal'
           />
           <InputDefault
             label={
               <>
-                Объем, м³
+                {t('ui.volume_m')}
                 <OptionalField />
               </>
             }
             type='text'
             value={volume}
-            onChange={(e) => setVolume(maskDecimalInput(e.target.value, { maxFractionDigits: 3 }))}
+            onChange={(e) =>
+              setVolume(
+                maskDecimalInput(e.target.value, {
+                  maxFractionDigits: 3,
+                })
+              )
+            }
             inputMode='decimal'
           />
         </div>
       </OptionalSection>
       <div className='flex items-end'>
-        <ToggleSwitch checked={active} onChange={setActive} onLabel='Доступен' offLabel='Недоступен' />
+        <ToggleSwitch checked={active} onChange={setActive} onLabel={t('ui.available')} offLabel={t('ui.not_available')} />
       </div>
       {!fixedCompanyId && (
         <SelectOption
-          label='Компания'
-          placeholder={loadingCompanies ? 'Загрузка...' : 'Выберите компанию'}
+          label={t('ui.company')}
+          placeholder={loadingCompanies ? t('ui.loading') : t('ui.select_a_company')}
           options={companyOptions}
           value={companyId}
           onChange={(v) => setCompanyId(v as string | undefined)}
@@ -402,17 +448,17 @@ export default function ProductForm({ product, onCancel, onSuccess, fixedCompany
         <div>
           {product && product.id && (
             <ButtonDefault type='button' variant='danger' onClick={handleDelete} disabled={saving}>
-              {saving ? 'Подождите...' : 'Удалить'}
+              {saving ? t('ui.wait_2') : t('ui.delete')}
             </ButtonDefault>
           )}
         </div>
 
         <div className='flex gap-3'>
           <ButtonDefault type='button' onClick={onCancel} variant='secondary' disabled={saving}>
-            Отмена
+            {t('ui.cancel')}
           </ButtonDefault>
           <ButtonDefault type='submit' variant='positive' disabled={saving}>
-            {saving ? 'Сохранение...' : product ? 'Сохранить' : 'Создать'}
+            {saving ? t('ui.saving') : product ? t('ui.save') : t('ui.create')}
           </ButtonDefault>
         </div>
       </div>

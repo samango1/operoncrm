@@ -17,6 +17,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import clsx from 'clsx';
+import type { I18nKey } from '@/i18n/messages.en';
+import { useI18n } from '@/i18n/useI18n';
 import ButtonDefault from '../Buttons/ButtonDefault';
 
 export type SidebarIconKey =
@@ -35,7 +37,7 @@ export type SidebarIconKey =
 
 export type SidebarItem = {
   path: string;
-  label: string;
+  label: I18nKey;
   icon?: SidebarIconKey;
 };
 
@@ -62,6 +64,7 @@ const iconMap: Record<SidebarIconKey, LucideIcon> = {
 export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useI18n();
   if (pathname?.includes('/login') || pathname?.includes('/not-allowed')) return null;
 
   return (
@@ -83,7 +86,7 @@ export default function Sidebar({ items, title = 'OperonCRM' }: SidebarProps) {
                 onClick={() => router.push(path)}
               >
                 {Icon && <Icon className='w-6 h-6 md:w-5 md:h-5 opacity-70 group-hover:opacity-100' />}
-                <span className='hidden md:inline'>{label}</span>
+                <span className='hidden md:inline'>{t(label)}</span>
               </ButtonDefault>
             );
           })}

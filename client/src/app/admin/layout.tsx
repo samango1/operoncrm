@@ -6,20 +6,67 @@ import RoleGuard from '@/components/Guards/RoleGuard';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const items: SidebarItem[] = [
-    { path: '/', label: 'Дашборд', icon: 'home' },
-    { path: '/users', label: 'Пользователи', icon: 'users' },
-    { path: '/companies', label: 'Компании', icon: 'companies' },
-    { path: '/statistics', label: 'Статистика', icon: 'statistics' },
-    { path: '/transactions', label: 'Транзакции', icon: 'transactions' },
-    { path: '/transaction-categories', label: 'Категории', icon: 'categories' },
-    { path: '/clients', label: 'Клиенты', icon: 'clients' },
-    { path: '/products', label: 'Продукты', icon: 'products' },
-    { path: '/services', label: 'Услуги', icon: 'services' },
-    { path: '/service-deliveries', label: 'Услуги клиентов', icon: 'service-deliveries' },
-    { path: '/service-pos', label: 'Предоставление услуг', icon: 'pos' },
-    { path: '/pos', label: 'Продажа продукции', icon: 'pos' },
+    {
+      path: '/',
+      label: 'ui.dashboard',
+      icon: 'home',
+    },
+    {
+      path: '/users',
+      label: 'ui.users',
+      icon: 'users',
+    },
+    {
+      path: '/companies',
+      label: 'ui.companies',
+      icon: 'companies',
+    },
+    {
+      path: '/statistics',
+      label: 'ui.statistics',
+      icon: 'statistics',
+    },
+    {
+      path: '/transactions',
+      label: 'ui.transactions',
+      icon: 'transactions',
+    },
+    {
+      path: '/transaction-categories',
+      label: 'ui.categories',
+      icon: 'categories',
+    },
+    {
+      path: '/clients',
+      label: 'ui.clients',
+      icon: 'clients',
+    },
+    {
+      path: '/products',
+      label: 'ui.products_2',
+      icon: 'products',
+    },
+    {
+      path: '/services',
+      label: 'ui.services_3',
+      icon: 'services',
+    },
+    {
+      path: '/service-deliveries',
+      label: 'ui.customer_services',
+      icon: 'service-deliveries',
+    },
+    {
+      path: '/service-pos',
+      label: 'ui.service_delivery',
+      icon: 'pos',
+    },
+    {
+      path: '/pos',
+      label: 'ui.product_sale',
+      icon: 'pos',
+    },
   ];
-
   return (
     <CookiesProvider>
       <RoleGuard allowedRoles={['admin']}>

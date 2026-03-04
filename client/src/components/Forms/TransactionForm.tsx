@@ -30,7 +30,7 @@ import {
   toDecimalString,
 } from '@/lib/decimal';
 import { buildTashkentDateTime, getTashkentNowParts, splitDateTimeToTashkent } from '@/lib/datetime';
-
+import { t } from '@/i18n';
 type Props = {
   companies: Company[];
   clients?: Client[];
@@ -41,7 +41,6 @@ type Props = {
   onCancel: () => void;
   onSuccess: (created?: Transaction) => void | Promise<void>;
 };
-
 export default function TransactionForm({
   companies,
   clients = [],
@@ -74,21 +73,27 @@ export default function TransactionForm({
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const prevCompanyIdRef = useRef<string | undefined>(undefined);
-
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isCompanyLocked = Boolean(defaultCompanyId);
-
   const extractCategoryIds = (value?: Transaction['categories']): string[] => {
     if (!value) return [];
     return (value as Array<TransactionCategory | string>)
       .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
       .filter((id) => id);
   };
-
-  const extractProductSelections = (value?: Transaction['products']): { ids: string[]; quantities: Record<string, number> } => {
-    if (!value) return { ids: [], quantities: {} };
+  const extractProductSelections = (
+    value?: Transaction['products']
+  ): {
+    ids: string[];
+    quantities: Record<string, number>;
+  } => {
+    if (!value)
+      return {
+        ids: [],
+        quantities: {},
+      };
     const counts: Record<string, number> = {};
     (value as Array<Product | string>)
       .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
@@ -96,11 +101,22 @@ export default function TransactionForm({
       .forEach((id) => {
         counts[id] = (counts[id] ?? 0) + 1;
       });
-    return { ids: Object.keys(counts), quantities: counts };
+    return {
+      ids: Object.keys(counts),
+      quantities: counts,
+    };
   };
-
-  const extractServiceSelections = (value?: Transaction['services']): { ids: string[]; quantities: Record<string, number> } => {
-    if (!value) return { ids: [], quantities: {} };
+  const extractServiceSelections = (
+    value?: Transaction['services']
+  ): {
+    ids: string[];
+    quantities: Record<string, number>;
+  } => {
+    if (!value)
+      return {
+        ids: [],
+        quantities: {},
+      };
     const counts: Record<string, number> = {};
     (value as Array<Service | string>)
       .map((item) => (typeof item === 'string' ? item : String(item?.id ?? '')))
@@ -108,9 +124,11 @@ export default function TransactionForm({
       .forEach((id) => {
         counts[id] = (counts[id] ?? 0) + 1;
       });
-    return { ids: Object.keys(counts), quantities: counts };
+    return {
+      ids: Object.keys(counts),
+      quantities: counts,
+    };
   };
-
   useEffect(() => {
     if (!transaction) return;
     setCompanyId(
@@ -148,64 +166,56 @@ export default function TransactionForm({
       setServicesStartTime(initialNowRef.current.time);
     }
   }, [transaction]);
-
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
   }));
-
   const getClientCompanyId = (c: Client): string | undefined => {
     if (!c.company) return undefined;
     return typeof c.company === 'string' ? c.company : String((c.company as Company)?.id ?? undefined);
   };
-
   const filteredClients = (clients ?? []).filter((c) => {
     if (!companyId) return false;
     const cid = getClientCompanyId(c);
     return cid === companyId;
   });
-
   const clientOptions: OptionType<string>[] = filteredClients.map((c) => ({
     value: String(c.id),
     label: c.name ? `${c.name}${c.phone ? ` (${c.phone})` : ''}` : String(c.id),
   }));
-
   const getProductCompanyId = (p: Product): string | undefined => {
     if (!p.company) return undefined;
     return typeof p.company === 'string' ? p.company : String((p.company as Company)?.id ?? undefined);
   };
-
   const filteredProducts = (products ?? []).filter((p) => {
     if (!companyId) return false;
     const cid = getProductCompanyId(p);
     return cid === companyId;
   });
-
   const productOptions: OptionType<string>[] = filteredProducts.map((p) => ({
     value: String(p.id),
     label: p.name ? `${p.name}${p.price ? ` (${formatMoney(p.price)} ${p.currency ?? ''})` : ''}` : String(p.id),
   }));
-
   const getServiceCompanyId = (s: Service): string | undefined => {
     if (!s.company) return undefined;
     return typeof s.company === 'string' ? s.company : String((s.company as Company)?.id ?? undefined);
   };
-
   const filteredServices = (services ?? []).filter((s) => {
     if (!companyId) return false;
     const cid = getServiceCompanyId(s);
     return cid === companyId;
   });
-
   const serviceOptions: OptionType<string>[] = filteredServices.map((s) => ({
     value: String(s.id),
     label: s.name ? `${s.name}${s.price ? ` (${formatMoney(s.price)} ${s.currency ?? ''})` : ''}` : String(s.id),
   }));
-
   const fetchCategories = async (company: string) => {
     setCategoriesLoading(true);
     try {
-      const res = await getCompanyTransactionCategories(company, { page: 1, page_size: 1000 });
+      const res = await getCompanyTransactionCategories(company, {
+        page: 1,
+        page_size: 1000,
+      });
       setCategories((res.results ?? res) as TransactionCategory[]);
     } catch (err) {
       console.error('fetchCategories error:', err);
@@ -214,7 +224,6 @@ export default function TransactionForm({
       setCategoriesLoading(false);
     }
   };
-
   useEffect(() => {
     if (!companyId) {
       setCategories([]);
@@ -223,7 +232,6 @@ export default function TransactionForm({
     }
     fetchCategories(companyId);
   }, [companyId]);
-
   useEffect(() => {
     if (categories.length === 0 || categoryIds.length === 0) return;
     const validIds = new Set(categories.map((c) => String(c.id)));
@@ -232,7 +240,6 @@ export default function TransactionForm({
       setCategoryIds(next);
     }
   }, [categories, categoryIds]);
-
   useEffect(() => {
     if (prevCompanyIdRef.current !== companyId) {
       prevCompanyIdRef.current = companyId;
@@ -269,7 +276,6 @@ export default function TransactionForm({
       setProductQuantities(nextQuantities);
     }
   }, [filteredProducts, productIds, productQuantities, companyId, serviceIds]);
-
   useEffect(() => {
     if (!companyId) {
       if (serviceIds.length > 0) {
@@ -290,7 +296,6 @@ export default function TransactionForm({
       setServiceQuantities(nextQuantities);
     }
   }, [filteredServices, serviceIds, serviceQuantities, companyId]);
-
   useEffect(() => {
     if (!clientId) return;
     const exists = filteredClients.some((c) => String(c.id) === String(clientId));
@@ -298,81 +303,108 @@ export default function TransactionForm({
       setClientId(undefined);
     }
   }, [companyId, clients]);
-
   const typeOptions: OptionType<string>[] = [
-    { value: 'income', label: 'Доход' },
-    { value: 'outcome', label: 'Расход' },
+    {
+      value: 'income',
+      label: t('ui.income'),
+    },
+    {
+      value: 'outcome',
+      label: t('ui.consumption'),
+    },
   ];
-
   const methodOptions: OptionType<string>[] = [
-    { value: 'cash', label: 'Нал' },
-    { value: 'card', label: 'Карта' },
+    {
+      value: 'cash',
+      label: t('ui.cash'),
+    },
+    {
+      value: 'card',
+      label: t('ui.card'),
+    },
   ];
-
   const currencyOptions: OptionType<string>[] = [
-    { value: 'UZS', label: 'UZS' },
-    { value: 'USD', label: 'USD' },
+    {
+      value: 'UZS',
+      label: 'UZS',
+    },
+    {
+      value: 'USD',
+      label: 'USD',
+    },
   ];
-
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError(null);
-
     if (!companyId) {
-      setError('Выберите компанию');
+      setError(t('ui.select_a_company'));
       return;
     }
     const normalizedInitial = normalizeDecimalInput(initialAmount);
-    if (!isValidDecimal(normalizedInitial, { maxFractionDigits: 2 }) || compareDecimalStrings(normalizedInitial, '0') <= 0) {
-      setError('Введите корректную сумму');
+    if (
+      !isValidDecimal(normalizedInitial, {
+        maxFractionDigits: 2,
+      }) ||
+      compareDecimalStrings(normalizedInitial, '0') <= 0
+    ) {
+      setError(t('ui.enter_the_correct_amount'));
       return;
     }
-
     const normalizedDiscount = discount === '' ? '0' : normalizeDecimalInput(discount);
-    if (discount !== '' && !isValidDecimal(normalizedDiscount, { maxFractionDigits: 2 })) {
-      setError('Введите корректную скидку');
+    if (
+      discount !== '' &&
+      !isValidDecimal(normalizedDiscount, {
+        maxFractionDigits: 2,
+      })
+    ) {
+      setError(t('ui.enter_a_correct_discount'));
       return;
     }
     if (compareDecimalStrings(normalizedDiscount, '0') < 0) {
-      setError('Скидка должна быть не меньше 0');
+      setError(t('ui.the_discount_must_be_at_least_0'));
       return;
     }
     if (compareDecimalStrings(normalizedDiscount, normalizedInitial) > 0) {
-      setError('Скидка не может быть больше суммы');
+      setError(t('ui.the_discount_cannot_exceed_the_amount'));
       return;
     }
-
     const dateTimeValue = buildTashkentDateTime(date, time);
     if (!dateTimeValue) {
-      setError('Укажите дату');
+      setError(t('ui.please_enter_a_date'));
       return;
     }
-
     const expandedProducts = productIds.flatMap((id) => {
       const qty = productQuantities[id] ?? 1;
       const safeQty = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
-      return Array.from({ length: safeQty }, () => id);
+      return Array.from(
+        {
+          length: safeQty,
+        },
+        () => id
+      );
     });
-
     const expandedServices = serviceIds.flatMap((id) => {
       const qty = serviceQuantities[id] ?? 1;
       const safeQty = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1;
-      return Array.from({ length: safeQty }, () => id);
+      return Array.from(
+        {
+          length: safeQty,
+        },
+        () => id
+      );
     });
-
     let servicesStartsAtValue = '';
     if (!servicesLocked && expandedServices.length > 0) {
       if (!clientId) {
-        setError('Для услуг нужно выбрать клиента');
+        setError(t('ui.for_services_you_need_to_select_a_client'));
         return;
       }
       servicesStartsAtValue = buildTashkentDateTime(servicesStartDate, servicesStartTime);
       if (!servicesStartsAtValue) {
-        setError('Укажите дату начала услуг');
+        setError(t('ui.specify_the_start_date_of_services'));
         return;
       }
     }
-
     const payload: Partial<Transaction> = {
       initial_amount: normalizedInitial,
       type,
@@ -386,12 +418,10 @@ export default function TransactionForm({
       company: companyId ?? undefined,
       discount_amount: normalizedDiscount,
     };
-
     if (!servicesLocked && expandedServices.length > 0) {
       payload.services = expandedServices;
       payload.services_starts_at = servicesStartsAtValue;
     }
-
     try {
       setLoading(true);
       let resp: Transaction;
@@ -408,50 +438,42 @@ export default function TransactionForm({
       }
     } catch (err) {
       console.error('saveTransaction error:', err);
-      setError('Ошибка при сохранении транзакции');
+      setError(t('ui.error_saving_transaction'));
     } finally {
       setLoading(false);
     }
   };
-
   const clientPlaceholder = !companyId
-    ? 'Сначала выберите компанию'
+    ? t('ui.first_select_a_company')
     : filteredClients.length === 0
-      ? 'Клиенты для компании не найдены'
-      : 'Выберите клиента';
-
+      ? t('ui.no_clients_found_for_the_company')
+      : t('ui.select_client');
   const categoryPlaceholder = !companyId
-    ? 'Сначала выберите компанию'
+    ? t('ui.first_select_a_company')
     : categoriesLoading
-      ? 'Загрузка категорий...'
+      ? t('ui.loading_categories')
       : categories.length === 0
-        ? 'Категории для компании не найдены'
-        : 'Выберите категорию';
-
+        ? t('ui.no_categories_found_for_the_company')
+        : t('ui.select_category');
   const productPlaceholder = !companyId
-    ? 'Сначала выберите компанию'
+    ? t('ui.first_select_a_company')
     : filteredProducts.length === 0
-      ? 'Продукты для компании не найдены'
-      : 'Выберите продукт';
-
+      ? t('ui.no_products_found_for_the_company')
+      : t('ui.select_product');
   const servicePlaceholder = !companyId
-    ? 'Сначала выберите компанию'
+    ? t('ui.first_select_a_company')
     : filteredServices.length === 0
-      ? 'Услуги для компании не найдены'
-      : 'Выберите услугу';
-
+      ? t('ui.no_services_found_for_the_company')
+      : t('ui.select_a_service');
   const servicesLocked = Boolean(transaction && (transaction.services?.length ?? 0) > 0);
-
   const categoryOptions: OptionType<string>[] = categories.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
   }));
-
   const handleDelete = async () => {
     if (!transaction || !transaction.id) return;
-    const ok = window.confirm('Вы уверены, что хотите удалить эту транзакцию? Это действие невозможно отменить.');
+    const ok = window.confirm(t('ui.are_you_sure_you_want_to_delete_this_5'));
     if (!ok) return;
-
     setError(null);
     setDeleting(true);
     try {
@@ -463,19 +485,18 @@ export default function TransactionForm({
       await onSuccess(transaction);
     } catch (err: any) {
       console.error('TransactionForm delete error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при удалении транзакции';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.error_deleting_transaction');
       setError(String(msg));
     } finally {
       setDeleting(false);
     }
   };
-
   return (
     <form onSubmit={handleSubmit} className='space-y-4 max-h-[70vh] overflow-y-auto px-1 md:max-h-none md:overflow-visible'>
       {!isCompanyLocked && (
         <SelectOption
-          label='Компания'
-          placeholder='Выберите компанию'
+          label={t('ui.company')}
+          placeholder={t('ui.select_a_company')}
           options={companyOptions}
           value={companyId}
           onChange={(v) => setCompanyId(v as string | undefined)}
@@ -483,10 +504,16 @@ export default function TransactionForm({
       )}
 
       <InputDefault
-        label='Сумма'
+        label={t('ui.amount')}
         type='text'
         value={initialAmount}
-        onChange={(e) => setInitialAmount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+        onChange={(e) =>
+          setInitialAmount(
+            maskDecimalInput(e.target.value, {
+              maxFractionDigits: 2,
+            })
+          )
+        }
         placeholder='0.00'
         inputMode='decimal'
         required
@@ -494,21 +521,21 @@ export default function TransactionForm({
 
       <div className='grid grid-cols-3 gap-3'>
         <SelectOption
-          label='Тип'
+          label={t('ui.type')}
           options={typeOptions}
           value={type}
           onChange={(v) => setType((v as 'income' | 'outcome') ?? 'income')}
         />
 
         <SelectOption
-          label='Метод'
+          label={t('ui.method')}
           options={methodOptions}
           value={method}
           onChange={(v) => setMethod((v as 'cash' | 'card') ?? 'cash')}
         />
 
         <SelectOption
-          label='Валюта'
+          label={t('ui.currency')}
           options={currencyOptions}
           value={currency}
           onChange={(v) => setCurrency((v as 'UZS' | 'USD') ?? 'UZS')}
@@ -518,8 +545,14 @@ export default function TransactionForm({
       <ToggleBadgeGroup
         storageKey={preferencesKeys.transactionExtra}
         items={[
-          { id: 'client', label: 'Клиент и товары/услуги' },
-          { id: 'details', label: 'Скидка и детали' },
+          {
+            id: 'client',
+            label: t('ui.client_and_products_services'),
+          },
+          {
+            id: 'details',
+            label: t('ui.discount_and_details'),
+          },
         ]}
       >
         {(openExtra) => (
@@ -529,7 +562,7 @@ export default function TransactionForm({
                 <SelectOption
                   label={
                     <>
-                      Клиент
+                      {t('ui.client')}
                       <OptionalField />
                     </>
                   }
@@ -543,7 +576,7 @@ export default function TransactionForm({
                 <SelectMultiple
                   label={
                     <>
-                      Категории
+                      {t('ui.categories')}
                       <OptionalField />
                     </>
                   }
@@ -557,7 +590,7 @@ export default function TransactionForm({
                 <SelectMultiple
                   label={
                     <>
-                      Продукты
+                      {t('ui.products_2')}
                       <OptionalField />
                     </>
                   }
@@ -578,7 +611,7 @@ export default function TransactionForm({
 
                 {productIds.length > 0 && (
                   <div className='space-y-2 rounded-lg border border-gray-200 bg-white/60 p-3'>
-                    <div className='text-xs text-gray-500'>Количество товаров</div>
+                    <div className='text-xs text-gray-500'>{t('ui.number_of_products')}</div>
                     {productIds.map((id) => {
                       const product = filteredProducts.find((p) => String(p.id) === String(id));
                       const label = product?.name ?? id;
@@ -608,7 +641,7 @@ export default function TransactionForm({
                 <SelectMultiple
                   label={
                     <>
-                      Услуги
+                      {t('ui.services_3')}
                       <OptionalField />
                     </>
                   }
@@ -628,12 +661,12 @@ export default function TransactionForm({
                 />
 
                 {servicesLocked && (
-                  <div className='text-xs text-gray-500'>Услуги уже назначены. Изменение списка и даты начала недоступно.</div>
+                  <div className='text-xs text-gray-500'>{t('ui.services_have_already_been_scheduled_changing_the_list')}</div>
                 )}
 
                 {serviceIds.length > 0 && (
                   <div className='space-y-2 rounded-lg border border-gray-200 bg-white/60 p-3'>
-                    <div className='text-xs text-gray-500'>Количество услуг</div>
+                    <div className='text-xs text-gray-500'>{t('ui.number_of_services')}</div>
                     {serviceIds.map((id) => {
                       const svc = filteredServices.find((s) => String(s.id) === String(id));
                       const label = svc?.name ?? id;
@@ -663,14 +696,14 @@ export default function TransactionForm({
                 {serviceIds.length > 0 && (
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
                     <InputDefault
-                      label='Начало услуг (дата)'
+                      label={t('ui.start_of_services_date')}
                       type='date'
                       value={servicesStartDate}
                       onChange={(e) => setServicesStartDate(e.target.value)}
                       disabled={servicesLocked}
                     />
                     <InputDefault
-                      label='Начало услуг (время)'
+                      label={t('ui.start_of_services_time')}
                       type='time'
                       value={servicesStartTime}
                       onChange={(e) => setServicesStartTime(e.target.value)}
@@ -687,26 +720,38 @@ export default function TransactionForm({
                 <InputDefault
                   label={
                     <>
-                      Скидка
+                      {t('ui.discount')}
                       <OptionalField />
                     </>
                   }
                   type='text'
                   value={discount}
-                  onChange={(e) => setDiscount(maskDecimalInput(e.target.value, { maxFractionDigits: 2 }))}
+                  onChange={(e) =>
+                    setDiscount(
+                      maskDecimalInput(e.target.value, {
+                        maxFractionDigits: 2,
+                      })
+                    )
+                  }
                   placeholder='0.00'
                   inputMode='decimal'
                 />
 
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-                  <InputDefault label='Дата' type='date' value={date} onChange={(e) => setDate(e.target.value)} />
-                  <InputDefault label='Время' type='time' value={time} onChange={(e) => setTime(e.target.value)} step={60} />
+                  <InputDefault label={t('ui.date')} type='date' value={date} onChange={(e) => setDate(e.target.value)} />
+                  <InputDefault
+                    label={t('ui.time')}
+                    type='time'
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    step={60}
+                  />
                 </div>
 
                 <TextAreaDefault
                   label={
                     <>
-                      Описание
+                      {t('ui.description')}
                       <OptionalField />
                     </>
                   }
@@ -725,17 +770,17 @@ export default function TransactionForm({
         <div>
           {transaction && transaction.id && (
             <ButtonDefault type='button' variant='danger' onClick={handleDelete} disabled={loading || deleting}>
-              {deleting ? 'Подождите...' : 'Удалить'}
+              {deleting ? t('ui.wait_2') : t('ui.delete')}
             </ButtonDefault>
           )}
         </div>
 
         <div className='flex gap-3'>
           <ButtonDefault type='button' variant='secondary' onClick={onCancel} disabled={loading || deleting}>
-            Отмена
+            {t('ui.cancel')}
           </ButtonDefault>
           <ButtonDefault type='submit' variant='positive' disabled={loading || deleting}>
-            {loading ? 'Сохранение...' : transaction ? 'Сохранить' : 'Создать'}
+            {loading ? t('ui.saving') : transaction ? t('ui.save') : t('ui.create')}
           </ButtonDefault>
         </div>
       </div>

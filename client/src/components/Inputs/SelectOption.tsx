@@ -2,13 +2,12 @@
 
 import React, { SelectHTMLAttributes } from 'react';
 import clsx from 'clsx';
-
+import { t } from '@/i18n';
 export type SelectOption<T extends string | number = string> = {
   value: T;
   label: string;
   disabled?: boolean;
 };
-
 interface SelectOptionProps<T extends string | number> extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
   label?: React.ReactNode;
   placeholder?: string;
@@ -17,10 +16,9 @@ interface SelectOptionProps<T extends string | number> extends Omit<SelectHTMLAt
   value?: T;
   onChange: (value: T | undefined) => void;
 }
-
 export default function SelectOption<T extends string | number>({
   label,
-  placeholder = 'Выберите значение',
+  placeholder = t('ui.select_value'),
   error,
   options,
   value,

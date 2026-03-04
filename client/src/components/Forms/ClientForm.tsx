@@ -21,7 +21,7 @@ import { formatLocalPhone, isLocalPhoneComplete, toFullPhoneNumber } from '@/lib
 import type { Client, ClientType } from '@/types/api/clients';
 import type { Company } from '@/types/api/companies';
 import type { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
-
+import { t } from '@/i18n';
 type Props = {
   client?: Client | null;
   onCancel: () => void;
@@ -29,27 +29,22 @@ type Props = {
   fixedCompanyId?: string;
   companiesOverride?: Company[];
 };
-
 const extractCompanyId = (company?: Company | string): string | undefined => {
   if (!company) return undefined;
   if (typeof company === 'string') return company;
   return (company as Company).id ? String((company as Company).id) : undefined;
 };
-
 export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId, companiesOverride }: Props) {
   const [name, setName] = useState<string>(client?.name ?? '');
   const [phone, setPhone] = useState<string>(formatLocalPhone(client?.phone ?? ''));
   const [description, setDescription] = useState<string>(client?.description ?? '');
   const [type, setType] = useState<'individual' | 'company' | 'group'>(client?.type ?? 'individual');
   const [companyId, setCompanyId] = useState<string | undefined>(fixedCompanyId ?? extractCompanyId(client?.company));
-
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
-
   useEffect(() => {
     setName(client?.name ?? '');
     setPhone(formatLocalPhone(client?.phone ?? ''));
@@ -57,7 +52,6 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
     setType((client?.type as ClientType) ?? 'individual');
     setCompanyId(fixedCompanyId ?? extractCompanyId(client?.company));
   }, [client, fixedCompanyId]);
-
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -73,7 +67,10 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
       }
       setLoadingCompanies(true);
       try {
-        const res = await getCompanies({ page: 1, page_size: 100 });
+        const res = await getCompanies({
+          page: 1,
+          page_size: 100,
+        });
         if (!mounted) return;
         setCompanies(res.results ?? res);
       } catch (e) {
@@ -86,30 +83,26 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
       mounted = false;
     };
   }, [companiesOverride, fixedCompanyId]);
-
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
   }));
-
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
     setCompanyError(null);
-
     if (!name.trim()) {
-      setError('Имя/название обязательно');
+      setError(t('ui.name_title_required'));
       return;
     }
     if (!fixedCompanyId && !companyId) {
-      setCompanyError('Компания обязательна');
+      setCompanyError(t('ui.company_is_required'));
       return;
     }
     if (!isLocalPhoneComplete(phone)) {
-      setError('Телефон должен содержать 9 цифр');
+      setError(t('ui.phone_number_must_contain_9_digits'));
       return;
     }
-
     setSaving(true);
     try {
       const payload: Partial<Client> = {
@@ -119,7 +112,6 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         type,
         company: companyId ?? undefined,
       };
-
       let resp: Client;
       if (fixedCompanyId) {
         if (client && client.id) {
@@ -132,22 +124,19 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
       } else {
         resp = await createClient(payload);
       }
-
       await onSuccess(resp);
     } catch (err: any) {
       console.error('save client error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Не удалось сохранить клиента';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.failed_to_save_client');
       setError(String(msg));
     } finally {
       setSaving(false);
     }
   };
-
   const handleDelete = async () => {
     if (!client || !client.id) return;
-    const ok = window.confirm('Вы уверены, что хотите удалить этого клиента? Это действие невозможно отменить.');
+    const ok = window.confirm(t('ui.are_you_sure_you_want_to_delete_this'));
     if (!ok) return;
-
     setError(null);
     setSaving(true);
     try {
@@ -161,20 +150,19 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
       }
     } catch (err: any) {
       console.error('ClientForm delete error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при удалении клиента';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.error_when_deleting_client');
       setError(String(msg));
     } finally {
       setSaving(false);
     }
   };
-
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
-      <InputDefault value={name} label='Имя / Название' onChange={(e) => setName(e.target.value)} required />
+      <InputDefault value={name} label={t('ui.name_title')} onChange={(e) => setName(e.target.value)} required />
 
       <InputDefault
         value={phone}
-        label='Телефон'
+        label={t('ui.phone')}
         prewritten='+998'
         type='tel'
         inputMode='numeric'
@@ -186,11 +174,20 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
       />
 
       <SelectOption
-        label='Тип'
+        label={t('ui.type')}
         options={[
-          { value: 'individual', label: 'Физическое лицо' },
-          { value: 'company', label: 'Компания' },
-          { value: 'group', label: 'Группа' },
+          {
+            value: 'individual',
+            label: t('ui.individual'),
+          },
+          {
+            value: 'company',
+            label: t('ui.company'),
+          },
+          {
+            value: 'group',
+            label: t('ui.group'),
+          },
         ]}
         value={type}
         onChange={(v) => setType((v as ClientType) ?? 'individual')}
@@ -198,8 +195,8 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
 
       {!fixedCompanyId && (
         <SelectOption
-          label='Компания'
-          placeholder={loadingCompanies ? 'Загрузка...' : 'Выберите компанию'}
+          label={t('ui.company')}
+          placeholder={loadingCompanies ? t('ui.loading') : t('ui.select_a_company')}
           options={companyOptions}
           value={companyId}
           onChange={(v) => setCompanyId(v as string | undefined)}
@@ -212,7 +209,7 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         <TextAreaDefault
           label={
             <>
-              Описание
+              {t('ui.description')}
               <OptionalField />
             </>
           }
@@ -227,17 +224,17 @@ export default function ClientForm({ client, onCancel, onSuccess, fixedCompanyId
         <div>
           {client && client.id && (
             <ButtonDefault type='button' variant='danger' onClick={handleDelete} disabled={saving}>
-              {saving ? 'Подождите...' : 'Удалить'}
+              {saving ? t('ui.wait_2') : t('ui.delete')}
             </ButtonDefault>
           )}
         </div>
 
         <div className='flex gap-3'>
           <ButtonDefault type='button' onClick={onCancel} variant='secondary' disabled={saving}>
-            Отмена
+            {t('ui.cancel')}
           </ButtonDefault>
           <ButtonDefault type='submit' variant='positive' disabled={saving}>
-            {saving ? 'Сохранение...' : client ? 'Сохранить' : 'Создать'}
+            {saving ? t('ui.saving') : client ? t('ui.save') : t('ui.create')}
           </ButtonDefault>
         </div>
       </div>

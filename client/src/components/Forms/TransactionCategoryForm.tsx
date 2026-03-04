@@ -16,7 +16,7 @@ import {
   updateCompanyTransactionCategory,
   deleteCompanyTransactionCategory,
 } from '@/lib/api';
-
+import { t } from '@/i18n';
 type Props = {
   category?: TransactionCategory | null;
   onCancel: () => void;
@@ -24,29 +24,23 @@ type Props = {
   fixedCompanyId?: string;
   companiesOverride?: Company[];
 };
-
 const extractCompanyId = (company?: Company | string): string | undefined => {
   if (!company) return undefined;
   if (typeof company === 'string') return company;
   return company.id ? String(company.id) : undefined;
 };
-
 export default function TransactionCategoryForm({ category, onCancel, onSuccess, fixedCompanyId, companiesOverride }: Props) {
   const [name, setName] = useState<string>(category?.name ?? '');
   const [companyId, setCompanyId] = useState<string | undefined>(fixedCompanyId ?? extractCompanyId(category?.company));
-
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
-
   useEffect(() => {
     setName(category?.name ?? '');
     setCompanyId(fixedCompanyId ?? extractCompanyId(category?.company));
   }, [category, fixedCompanyId]);
-
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -62,7 +56,10 @@ export default function TransactionCategoryForm({ category, onCancel, onSuccess,
       }
       setLoadingCompanies(true);
       try {
-        const res = await getCompanies({ page: 1, page_size: 1000 });
+        const res = await getCompanies({
+          page: 1,
+          page_size: 1000,
+        });
         if (!mounted) return;
         setCompanies(res.results ?? res);
       } catch (e) {
@@ -75,34 +72,28 @@ export default function TransactionCategoryForm({ category, onCancel, onSuccess,
       mounted = false;
     };
   }, [companiesOverride, fixedCompanyId]);
-
   const companyOptions: OptionType<string>[] = companies.map((c) => ({
     value: String(c.id),
     label: c.name ?? String(c.id),
   }));
-
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
     setCompanyError(null);
-
     if (!name.trim()) {
-      setError('Название обязательно');
+      setError(t('ui.title_required'));
       return;
     }
-
     if (!fixedCompanyId && !companyId) {
-      setCompanyError('Компания обязательна');
+      setCompanyError(t('ui.company_is_required'));
       return;
     }
-
     setSaving(true);
     try {
       const payload: Partial<TransactionCategory> = {
         name: name.trim(),
         company: companyId ?? undefined,
       };
-
       let resp: TransactionCategory;
       if (fixedCompanyId) {
         if (category && category.id) {
@@ -115,22 +106,19 @@ export default function TransactionCategoryForm({ category, onCancel, onSuccess,
       } else {
         resp = await createTransactionCategory(payload);
       }
-
       await onSuccess(resp);
     } catch (err: any) {
       console.error('save transaction category error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Не удалось сохранить категорию';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.failed_to_save_category');
       setError(String(msg));
     } finally {
       setSaving(false);
     }
   };
-
   const handleDelete = async () => {
     if (!category || !category.id) return;
-    const ok = window.confirm('Вы уверены, что хотите удалить эту категорию? Это действие невозможно отменить.');
+    const ok = window.confirm(t('ui.are_you_sure_you_want_to_delete_this_3'));
     if (!ok) return;
-
     setError(null);
     setSaving(true);
     try {
@@ -144,21 +132,20 @@ export default function TransactionCategoryForm({ category, onCancel, onSuccess,
       }
     } catch (err: any) {
       console.error('TransactionCategoryForm delete error:', err);
-      const msg = err?.response?.data?.detail || err?.message || 'Ошибка при удалении категории';
+      const msg = err?.response?.data?.detail || err?.message || t('ui.error_when_deleting_a_category');
       setError(String(msg));
     } finally {
       setSaving(false);
     }
   };
-
   return (
     <form onSubmit={handleSubmit} className='space-y-4'>
-      <InputDefault value={name} label='Название' onChange={(e) => setName(e.target.value)} required />
+      <InputDefault value={name} label={t('ui.title')} onChange={(e) => setName(e.target.value)} required />
 
       {!fixedCompanyId && (
         <SelectOption
-          label='Компания'
-          placeholder={loadingCompanies ? 'Загрузка...' : 'Выберите компанию'}
+          label={t('ui.company')}
+          placeholder={loadingCompanies ? t('ui.loading') : t('ui.select_a_company')}
           options={companyOptions}
           value={companyId}
           onChange={(v) => setCompanyId(v as string | undefined)}
@@ -173,17 +160,17 @@ export default function TransactionCategoryForm({ category, onCancel, onSuccess,
         <div>
           {category && category.id && (
             <ButtonDefault type='button' variant='danger' onClick={handleDelete} disabled={saving}>
-              {saving ? 'Подождите...' : 'Удалить'}
+              {saving ? t('ui.wait_2') : t('ui.delete')}
             </ButtonDefault>
           )}
         </div>
 
         <div className='flex gap-3'>
           <ButtonDefault type='button' onClick={onCancel} variant='secondary' disabled={saving}>
-            Отмена
+            {t('ui.cancel')}
           </ButtonDefault>
           <ButtonDefault type='submit' variant='positive' disabled={saving}>
-            {saving ? 'Сохранение...' : category ? 'Сохранить' : 'Создать'}
+            {saving ? t('ui.saving') : category ? t('ui.save') : t('ui.create')}
           </ButtonDefault>
         </div>
       </div>

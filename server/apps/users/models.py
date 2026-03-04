@@ -13,6 +13,15 @@ PLATFORM_ROLES = [
     ("member", "Member"),
 ]
 
+PREFERENCE_LANG_CHOICES = [
+    ("en", "English"),
+    ("ru", "Russian"),
+]
+
+
+def default_user_preferences():
+    return {"lang": "en"}
+
 
 class UserManager(BaseUserManager):
     def create_user(self, phone, password=None, **extra_fields):
@@ -40,6 +49,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     platform_role = models.CharField(
         max_length=10, choices=PLATFORM_ROLES, default="member"
     )
+    preferences = models.JSONField(default=default_user_preferences, blank=True)
 
     created_by = models.ForeignKey(
         "self",

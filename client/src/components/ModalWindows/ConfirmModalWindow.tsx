@@ -3,9 +3,8 @@
 import React, { ReactNode } from 'react';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
 import ButtonDefault from '@/components/Buttons/ButtonDefault';
-
+import { t } from '@/i18n';
 type ButtonVariant = React.ComponentProps<typeof ButtonDefault>['variant'];
-
 type ConfirmModalWindowProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -20,15 +19,14 @@ type ConfirmModalWindowProps = {
   showCloseIcon?: boolean;
   children?: ReactNode;
 };
-
 export default function ConfirmModalWindow({
   isOpen,
   onClose,
   onConfirm,
-  title = 'Подтвердите действие',
+  title = t('ui.confirm_action'),
   description,
-  confirmText = 'Подтвердить',
-  cancelText = 'Отмена',
+  confirmText = t('ui.confirm'),
+  cancelText = t('ui.cancel'),
   confirmVariant = 'positive',
   loading = false,
   disableConfirm = false,
@@ -50,7 +48,7 @@ export default function ConfirmModalWindow({
             {cancelText}
           </ButtonDefault>
           <ButtonDefault type='button' variant={confirmVariant} onClick={onConfirm} disabled={loading || disableConfirm}>
-            {loading ? 'Подтверждение...' : confirmText}
+            {loading ? t('ui.confirmation') : confirmText}
           </ButtonDefault>
         </div>
       </div>

@@ -26,7 +26,6 @@ import {
 } from '@/lib/api';
 import { formatMoney } from '@/lib/decimal';
 import { getPlatformRoleFromCookie } from '@/lib/role';
-
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import SelectOption from '@/components/Inputs/SelectOption';
 import SelectMultiple from '@/components/Inputs/SelectMultiple';
@@ -36,14 +35,12 @@ import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
 import LineChart from '@/components/Charts/LineChart';
 import PieChart from '@/components/Charts/PieChart';
 import BarGraph from '@/components/Charts/BarGraph';
-
 import type { SelectOption as OptionType } from '@/components/Inputs/SelectOption';
 import { Funnel } from 'lucide-react';
-
+import { t } from '@/i18n';
 type StatisticsPageProps = {
   tenantSlug?: string;
 };
-
 type FiltersState = {
   dateFrom: string;
   dateTo: string;
@@ -58,7 +55,6 @@ type FiltersState = {
   validOnly: boolean | null;
   top: number;
 };
-
 function SummaryCard({
   label,
   value,
@@ -69,7 +65,6 @@ function SummaryCard({
   accent?: 'default' | 'positive' | 'negative';
 }) {
   const accentClass = accent === 'positive' ? 'text-green-600' : accent === 'negative' ? 'text-red-600' : 'text-gray-900';
-
   return (
     <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
       <p className='text-sm text-gray-500'>{label}</p>
@@ -77,11 +72,9 @@ function SummaryCard({
     </div>
   );
 }
-
 function EmptyState({ text }: { text: string }) {
   return <div className='rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500'>{text}</div>;
 }
-
 function ChartCard({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
@@ -91,23 +84,19 @@ function ChartCard({ title, children, hint }: { title: string; children: React.R
     </div>
   );
 }
-
 const toNumber = (value?: string | number | null): number => {
   if (value === null || value === undefined) return 0;
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   const parsed = Number(String(value).replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : 0;
 };
-
 const trimLabel = (value: string, maxLength = 28): string => {
   if (!value) return '';
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1)}…`;
 };
-
 const detectDominantCurrency = (items: StatisticsKeyAmountItem[]): FiltersState['currency'] => {
   if (!items || items.length === 0) return 'all';
-
   const normalized = items
     .map((item) => {
       const keyRaw = String(item.key ?? item.label ?? '')
@@ -120,20 +109,22 @@ const detectDominantCurrency = (items: StatisticsKeyAmountItem[]): FiltersState[
         amountAbs: Math.abs(toNumber(item.amount)),
       };
     })
-    .filter((item): item is { key: Exclude<FiltersState['currency'], 'all'>; count: number; amountAbs: number } =>
-      Boolean(item)
+    .filter(
+      (
+        item
+      ): item is {
+        key: Exclude<FiltersState['currency'], 'all'>;
+        count: number;
+        amountAbs: number;
+      } => Boolean(item)
     );
-
   if (normalized.length === 0) return 'all';
-
   normalized.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
     return b.amountAbs - a.amountAbs;
   });
-
   return normalized[0].key;
 };
-
 export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
   const [statistics, setStatistics] = useState<CompanyStatistics | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -141,19 +132,15 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
   const [companyLoading, setCompanyLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [role, setRole] = useState<PlatformRole | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [currencyManuallyChanged, setCurrencyManuallyChanged] = useState(false);
-
   const isTenantMode = Boolean(tenantSlug);
-
   const [filters, setFilters] = useState<FiltersState>({
     dateFrom: '',
     dateTo: '',
@@ -168,41 +155,50 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
     validOnly: null,
     top: 8,
   });
-
   const loadCompanies = async () => {
     try {
-      const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
+      const companiesRes = await getCompanies({
+        page: 1,
+        page_size: 1000,
+      });
       setCompanies(companiesRes.results as Company[]);
     } catch (err) {
       console.error('loadCompanies error:', err);
-      setError('Не удалось загрузить список компаний');
+      setError(t('ui.failed_to_load_company_list'));
     }
   };
-
   const loadCompanyEntities = async (companyId: string) => {
     try {
       const [categoriesRes, clientsRes, productsRes, servicesRes] = await Promise.all([
-        getCompanyTransactionCategories(companyId, { page: 1, page_size: 1000 }),
-        getCompanyClients(companyId, { page: 1, page_size: 1000 }),
-        getCompanyProducts(companyId, { page: 1, page_size: 1000 }),
-        getCompanyServices(companyId, { page: 1, page_size: 1000 }),
+        getCompanyTransactionCategories(companyId, {
+          page: 1,
+          page_size: 1000,
+        }),
+        getCompanyClients(companyId, {
+          page: 1,
+          page_size: 1000,
+        }),
+        getCompanyProducts(companyId, {
+          page: 1,
+          page_size: 1000,
+        }),
+        getCompanyServices(companyId, {
+          page: 1,
+          page_size: 1000,
+        }),
       ]);
-
       const nextCategories = (categoriesRes.results as TransactionCategory[]) ?? [];
       const nextClients = (clientsRes.results as Client[]) ?? [];
       const nextProducts = (productsRes.results as Product[]) ?? [];
       const nextServices = (servicesRes.results as Service[]) ?? [];
-
       setCategories(nextCategories);
       setClients(nextClients);
       setProducts(nextProducts);
       setServices(nextServices);
-
       const categoryIdsSet = new Set(nextCategories.map((item) => String(item.id)));
       const clientIdsSet = new Set(nextClients.map((item) => String(item.id)));
       const productIdsSet = new Set(nextProducts.map((item) => String(item.id)));
       const serviceIdsSet = new Set(nextServices.map((item) => String(item.id)));
-
       setFilters((prev) => ({
         ...prev,
         categoryIds: prev.categoryIds.filter((id) => categoryIdsSet.has(String(id))),
@@ -218,17 +214,14 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       setServices([]);
     }
   };
-
   useEffect(() => {
     const resolvedRole = getPlatformRoleFromCookie();
     setRole(resolvedRole);
   }, []);
-
   useEffect(() => {
     if (isTenantMode) return;
     loadCompanies();
   }, [isTenantMode]);
-
   useEffect(() => {
     if (!tenantSlug) return;
     const fetchTenantCompany = async () => {
@@ -244,7 +237,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
         setCompanies(companyRes ? [companyRes as Company] : []);
       } catch (err) {
         console.error('getCompanyBySlug error:', err);
-        setError('Не удалось загрузить компанию');
+        setError(t('ui.failed_to_load_company'));
         setTenantCompany(null);
         setSelectedCompanyId(undefined);
         setCompanies([]);
@@ -254,21 +247,38 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
     };
     fetchTenantCompany();
   }, [tenantSlug]);
-
   useEffect(() => {
     if (isTenantMode) {
-      setFilters((prev) => (prev.validOnly !== null ? { ...prev, validOnly: null } : prev));
+      setFilters((prev) =>
+        prev.validOnly !== null
+          ? {
+              ...prev,
+              validOnly: null,
+            }
+          : prev
+      );
       return;
     }
-
     if (role === 'admin' || role === 'agent') {
-      setFilters((prev) => (prev.validOnly === null ? { ...prev, validOnly: true } : prev));
+      setFilters((prev) =>
+        prev.validOnly === null
+          ? {
+              ...prev,
+              validOnly: true,
+            }
+          : prev
+      );
       return;
     }
-
-    setFilters((prev) => (prev.validOnly !== null ? { ...prev, validOnly: null } : prev));
+    setFilters((prev) =>
+      prev.validOnly !== null
+        ? {
+            ...prev,
+            validOnly: null,
+          }
+        : prev
+    );
   }, [role, isTenantMode]);
-
   useEffect(() => {
     if (!selectedCompanyId) {
       setStatistics(null);
@@ -280,7 +290,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
     }
     loadCompanyEntities(selectedCompanyId);
   }, [selectedCompanyId]);
-
   const statisticsQuery = useMemo<CompanyStatisticsQuery>(() => {
     return {
       date_from: filters.dateFrom || undefined,
@@ -297,16 +306,13 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       top: filters.top,
     };
   }, [filters]);
-
   useEffect(() => {
     if (!selectedCompanyId) return;
-
     if (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) {
       setStatistics(null);
-      setError('Дата "С" не может быть позже даты "По".');
+      setError(t('ui.the_from_date_cannot_be_later_than_the'));
       return;
     }
-
     let cancelled = false;
     const fetchStatistics = async () => {
       setLoading(true);
@@ -316,7 +322,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
         if (cancelled) return;
         const typedResponse = response as CompanyStatistics;
         setStatistics(typedResponse);
-
         if (!currencyManuallyChanged && filters.currency === 'all') {
           const dominantCurrency = detectDominantCurrency(typedResponse?.breakdowns?.currencies ?? []);
           if (dominantCurrency !== 'all') {
@@ -333,24 +338,21 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
         if (cancelled) return;
         console.error('getCompanyStatistics error:', err);
         setStatistics(null);
-        setError('Не удалось загрузить статистику');
+        setError(t('ui.failed_to_load_statistics'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-
     fetchStatistics();
     return () => {
       cancelled = true;
     };
   }, [selectedCompanyId, statisticsQuery, filters.dateFrom, filters.dateTo, filters.currency, currencyManuallyChanged]);
-
   const selectedCompany = useMemo(() => {
     if (isTenantMode) return tenantCompany ?? undefined;
     if (!selectedCompanyId) return undefined;
     return companies.find((item) => String(item.id) === String(selectedCompanyId));
   }, [isTenantMode, tenantCompany, selectedCompanyId, companies]);
-
   const companyOptions: OptionType<string>[] = useMemo(
     () =>
       companies.map((item) => ({
@@ -359,7 +361,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       })),
     [companies]
   );
-
   const categoryOptions: OptionType<string>[] = useMemo(
     () =>
       categories.map((item) => ({
@@ -368,7 +369,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       })),
     [categories]
   );
-
   const clientOptions: OptionType<string>[] = useMemo(
     () =>
       clients.map((item) => ({
@@ -377,7 +377,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       })),
     [clients]
   );
-
   const productOptions: OptionType<string>[] = useMemo(
     () =>
       products.map((item) => ({
@@ -386,7 +385,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       })),
     [products]
   );
-
   const serviceOptions: OptionType<string>[] = useMemo(
     () =>
       services.map((item) => ({
@@ -395,40 +393,68 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       })),
     [services]
   );
-
   const showValidSwitch = !isTenantMode && (role === 'admin' || role === 'agent');
   const selectedCurrencyLabel = filters.currency === 'all' ? '' : filters.currency;
   const hasMixedCurrencies = filters.currency === 'all' && (statistics?.breakdowns?.currencies?.length ?? 0) > 1;
-
   const formatAmount = (value?: string | null): string => {
     const formatted = formatMoney(value ?? '');
     if (!formatted) return '0.00';
     return selectedCurrencyLabel ? `${formatted} ${selectedCurrencyLabel}` : formatted;
   };
-
   const summaryCards = useMemo(() => {
     if (!statistics) return [];
     const summary = statistics.summary;
     const balanceAmount = Number(summary.balance ?? '0');
     return [
-      { label: 'Транзакции', value: String(summary.transactions_count ?? 0) },
-      { label: 'Доходные транзакции', value: String(summary.income_transactions_count ?? 0) },
-      { label: 'Расходные транзакции', value: String(summary.outcome_transactions_count ?? 0) },
-      { label: 'Клиентов с транзакциями', value: String(summary.clients_with_transactions ?? 0) },
-      { label: 'Продано единиц товаров', value: String(summary.products_units ?? 0) },
-      { label: 'Предоставлено услуг', value: String(summary.services_units ?? 0) },
-      { label: 'Доход', value: formatAmount(summary.income_total), accent: 'positive' as const },
-      { label: 'Расход', value: formatAmount(summary.outcome_total), accent: 'negative' as const },
       {
-        label: 'Баланс',
+        label: t('ui.transactions'),
+        value: String(summary.transactions_count ?? 0),
+      },
+      {
+        label: t('ui.income_transactions'),
+        value: String(summary.income_transactions_count ?? 0),
+      },
+      {
+        label: t('ui.expense_transactions'),
+        value: String(summary.outcome_transactions_count ?? 0),
+      },
+      {
+        label: t('ui.clients_with_transactions'),
+        value: String(summary.clients_with_transactions ?? 0),
+      },
+      {
+        label: t('ui.units_sold'),
+        value: String(summary.products_units ?? 0),
+      },
+      {
+        label: t('ui.services_provided'),
+        value: String(summary.services_units ?? 0),
+      },
+      {
+        label: t('ui.income'),
+        value: formatAmount(summary.income_total),
+        accent: 'positive' as const,
+      },
+      {
+        label: t('ui.consumption'),
+        value: formatAmount(summary.outcome_total),
+        accent: 'negative' as const,
+      },
+      {
+        label: t('ui.balance'),
         value: formatAmount(summary.balance),
         accent: balanceAmount >= 0 ? ('positive' as const) : ('negative' as const),
       },
-      { label: 'Сумма скидок', value: formatAmount(summary.discount_total) },
-      { label: 'Средний чек', value: formatAmount(summary.average_transaction) },
+      {
+        label: t('ui.discount_amount'),
+        value: formatAmount(summary.discount_total),
+      },
+      {
+        label: t('ui.average_check'),
+        value: formatAmount(summary.average_transaction),
+      },
     ];
   }, [statistics, selectedCurrencyLabel]);
-
   const trendChartData = useMemo(() => {
     if (!statistics) return [];
     return statistics.trend.map((item) => ({
@@ -438,7 +464,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       balanceValue: toNumber(item.balance),
     }));
   }, [statistics]);
-
   const typePieData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.types.map((item) => ({
@@ -446,7 +471,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Math.abs(toNumber(item.amount)),
     }));
   }, [statistics]);
-
   const methodPieData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.methods.map((item) => ({
@@ -454,7 +478,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Number(item.count ?? 0),
     }));
   }, [statistics]);
-
   const currencyPieData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.currencies.map((item) => ({
@@ -462,7 +485,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Math.abs(toNumber(item.amount)),
     }));
   }, [statistics]);
-
   const categoriesBarData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.categories.map((item) => ({
@@ -470,7 +492,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Math.abs(toNumber(item.amount)),
     }));
   }, [statistics]);
-
   const clientsBarData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.clients.map((item) => ({
@@ -478,7 +499,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Math.abs(toNumber(item.amount)),
     }));
   }, [statistics]);
-
   const productsBarData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.products.map((item) => ({
@@ -486,7 +506,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Number(item.units ?? 0),
     }));
   }, [statistics]);
-
   const servicesBarData = useMemo(() => {
     if (!statistics) return [];
     return statistics.breakdowns.services.map((item) => ({
@@ -494,59 +513,82 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       value: Number(item.units ?? 0),
     }));
   }, [statistics]);
-
   const keyAmountColumns: Column<StatisticsKeyAmountItem>[] = useMemo(
     () => [
-      { key: 'label', label: 'Параметр' },
-      { key: 'count', label: 'Транзакций' },
+      {
+        key: 'label',
+        label: t('ui.parameter'),
+      },
+      {
+        key: 'count',
+        label: t('ui.transactions_2'),
+      },
       {
         key: 'amount',
-        label: 'Сумма',
+        label: t('ui.amount'),
         render: (row) => formatAmount(row.amount),
       },
     ],
     [selectedCurrencyLabel]
   );
-
   const namedAmountColumns: Column<StatisticsNamedAmountItem>[] = useMemo(
     () => [
-      { key: 'name', label: 'Название' },
-      { key: 'count', label: 'Транзакций' },
+      {
+        key: 'name',
+        label: t('ui.title'),
+      },
+      {
+        key: 'count',
+        label: t('ui.transactions_2'),
+      },
       {
         key: 'amount',
-        label: 'Сумма',
+        label: t('ui.amount'),
         render: (row) => formatAmount(row.amount),
       },
     ],
     [selectedCurrencyLabel]
   );
-
   const namedUnitsColumns: Column<StatisticsNamedUnitsItem>[] = useMemo(
     () => [
-      { key: 'name', label: 'Название' },
-      { key: 'transactions_count', label: 'Транзакций' },
-      { key: 'units', label: 'Единиц' },
+      {
+        key: 'name',
+        label: t('ui.title'),
+      },
+      {
+        key: 'transactions_count',
+        label: t('ui.transactions_2'),
+      },
+      {
+        key: 'units',
+        label: t('ui.units'),
+      },
     ],
     []
   );
-
   const trendColumns: Column<CompanyStatistics['trend'][number]>[] = useMemo(
     () => [
-      { key: 'period', label: 'Период' },
-      { key: 'transactions_count', label: 'Транзакций' },
+      {
+        key: 'period',
+        label: t('ui.period'),
+      },
+      {
+        key: 'transactions_count',
+        label: t('ui.transactions_2'),
+      },
       {
         key: 'income',
-        label: 'Доход',
+        label: t('ui.income'),
         render: (row) => <span className='text-green-600 font-medium'>{formatAmount(row.income)}</span>,
       },
       {
         key: 'outcome',
-        label: 'Расход',
+        label: t('ui.consumption'),
         render: (row) => <span className='text-red-600 font-medium'>{formatAmount(row.outcome)}</span>,
       },
       {
         key: 'balance',
-        label: 'Баланс',
+        label: t('ui.balance'),
         render: (row) => {
           const balance = Number(row.balance ?? '0');
           return (
@@ -559,7 +601,6 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
     ],
     [selectedCurrencyLabel]
   );
-
   const resetFilters = () => {
     const defaultValid = !isTenantMode && (role === 'admin' || role === 'agent') ? true : null;
     setCurrencyManuallyChanged(false);
@@ -578,22 +619,24 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       top: 8,
     });
   };
-
   const headerSubtitle = isTenantMode
     ? companyLoading
-      ? 'Загрузка компании...'
+      ? t('ui.loading_company')
       : selectedCompanyId
-        ? `Транзакций в выборке: ${statistics?.summary.transactions_count ?? 0}`
-        : 'Компания не найдена'
+        ? t('ui.transactions_in_the_sample_value_0', {
+            v0: statistics?.summary.transactions_count ?? 0,
+          })
+        : t('ui.company_not_found')
     : selectedCompanyId
-      ? `Транзакций в выборке: ${statistics?.summary.transactions_count ?? 0}`
-      : 'Выберите компанию для анализа';
-
+      ? t('ui.transactions_in_the_sample_value_0', {
+          v0: statistics?.summary.transactions_count ?? 0,
+        })
+      : t('ui.select_a_company_to_analyze');
   return (
     <>
       <section className='mb-6 flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-semibold'>Статистика</h1>
+          <h1 className='text-2xl font-semibold'>{t('ui.statistics')}</h1>
           <p className='text-sm text-gray-500'>{headerSubtitle}</p>
         </div>
       </section>
@@ -602,8 +645,8 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
         {!isTenantMode && (
           <div>
             <SelectOption
-              label='Компания'
-              placeholder='Выберите компанию'
+              label={t('ui.company')}
+              placeholder={t('ui.select_a_company')}
               options={companyOptions}
               value={selectedCompanyId}
               onChange={(value) => {
@@ -624,25 +667,44 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
           <>
             <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
               <InputDefault
-                label='С даты'
+                label={t('ui.from_date')}
                 type='date'
                 value={filters.dateFrom}
-                onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    dateFrom: e.target.value,
+                  }))
+                }
               />
 
               <InputDefault
-                label='По дату'
+                label={t('ui.to_date')}
                 type='date'
                 value={filters.dateTo}
-                onChange={(e) => setFilters((prev) => ({ ...prev, dateTo: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    dateTo: e.target.value,
+                  }))
+                }
               />
 
               <SelectOption
-                label='Группировка тренда'
+                label={t('ui.trend_grouping')}
                 options={[
-                  { value: 'day', label: 'По дням' },
-                  { value: 'week', label: 'По неделям' },
-                  { value: 'month', label: 'По месяцам' },
+                  {
+                    value: 'day',
+                    label: t('ui.by_day'),
+                  },
+                  {
+                    value: 'week',
+                    label: t('ui.by_week'),
+                  },
+                  {
+                    value: 'month',
+                    label: t('ui.by_month'),
+                  },
                 ]}
                 value={filters.groupBy}
                 onChange={(value) =>
@@ -654,11 +716,20 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               />
 
               <SelectOption
-                label='Тип транзакции'
+                label={t('ui.transaction_type')}
                 options={[
-                  { value: 'all', label: 'Все' },
-                  { value: 'income', label: 'Доход' },
-                  { value: 'outcome', label: 'Расход' },
+                  {
+                    value: 'all',
+                    label: t('ui.all'),
+                  },
+                  {
+                    value: 'income',
+                    label: t('ui.income'),
+                  },
+                  {
+                    value: 'outcome',
+                    label: t('ui.consumption'),
+                  },
                 ]}
                 value={filters.type}
                 onChange={(value) =>
@@ -670,11 +741,20 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               />
 
               <SelectOption
-                label='Метод оплаты'
+                label={t('ui.payment_method')}
                 options={[
-                  { value: 'all', label: 'Все' },
-                  { value: 'cash', label: 'Наличные' },
-                  { value: 'card', label: 'Карта' },
+                  {
+                    value: 'all',
+                    label: t('ui.all'),
+                  },
+                  {
+                    value: 'cash',
+                    label: t('ui.cash_2'),
+                  },
+                  {
+                    value: 'card',
+                    label: t('ui.card'),
+                  },
                 ]}
                 value={filters.method}
                 onChange={(value) =>
@@ -686,11 +766,20 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               />
 
               <SelectOption
-                label='Валюта'
+                label={t('ui.currency')}
                 options={[
-                  { value: 'all', label: 'Все валюты' },
-                  { value: 'UZS', label: 'UZS' },
-                  { value: 'USD', label: 'USD' },
+                  {
+                    value: 'all',
+                    label: t('ui.all_currencies'),
+                  },
+                  {
+                    value: 'UZS',
+                    label: 'UZS',
+                  },
+                  {
+                    value: 'USD',
+                    label: 'USD',
+                  },
                 ]}
                 value={filters.currency}
                 onChange={(value) => {
@@ -705,7 +794,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
 
             <div className='flex items-center justify-between gap-3'>
               <ButtonDefault type='button' variant='outline' onClick={resetFilters}>
-                Сбросить фильтры
+                {t('ui.reset_filters')}
               </ButtonDefault>
 
               <ButtonDefault
@@ -715,7 +804,7 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               >
                 <span className='flex items-center gap-2'>
                   <Funnel className='w-4 h-4' />
-                  Доп. фильтры
+                  {t('ui.add_filters')}
                 </span>
               </ButtonDefault>
             </div>
@@ -724,62 +813,105 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                   <SelectMultiple
-                    label='Категории'
-                    placeholder='Поиск категории'
+                    label={t('ui.categories')}
+                    placeholder={t('ui.category_search')}
                     options={categoryOptions}
                     value={filters.categoryIds}
-                    onChange={(value) => setFilters((prev) => ({ ...prev, categoryIds: value as string[] }))}
+                    onChange={(value) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        categoryIds: value as string[],
+                      }))
+                    }
                   />
 
                   <SelectMultiple
-                    label='Клиенты'
-                    placeholder='Поиск клиента'
+                    label={t('ui.clients')}
+                    placeholder={t('ui.search_for_a_client')}
                     options={clientOptions}
                     value={filters.clientIds}
-                    onChange={(value) => setFilters((prev) => ({ ...prev, clientIds: value as string[] }))}
+                    onChange={(value) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        clientIds: value as string[],
+                      }))
+                    }
                   />
 
                   <SelectMultiple
-                    label='Продукты'
-                    placeholder='Поиск продукта'
+                    label={t('ui.products_2')}
+                    placeholder={t('ui.product_search')}
                     options={productOptions}
                     value={filters.productIds}
-                    onChange={(value) => setFilters((prev) => ({ ...prev, productIds: value as string[] }))}
+                    onChange={(value) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        productIds: value as string[],
+                      }))
+                    }
                   />
 
                   <SelectMultiple
-                    label='Услуги'
-                    placeholder='Поиск услуги'
+                    label={t('ui.services_3')}
+                    placeholder={t('ui.service_search')}
                     options={serviceOptions}
                     value={filters.serviceIds}
-                    onChange={(value) => setFilters((prev) => ({ ...prev, serviceIds: value as string[] }))}
+                    onChange={(value) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        serviceIds: value as string[],
+                      }))
+                    }
                   />
                 </div>
 
                 <div className='mt-4 flex flex-wrap items-center justify-between gap-3'>
                   <SelectOption
-                    label='Top элементов'
+                    label={t('ui.top_elements')}
                     options={[
-                      { value: '5', label: '5' },
-                      { value: '8', label: '8' },
-                      { value: '10', label: '10' },
-                      { value: '20', label: '20' },
-                      { value: '50', label: '50' },
+                      {
+                        value: '5',
+                        label: '5',
+                      },
+                      {
+                        value: '8',
+                        label: '8',
+                      },
+                      {
+                        value: '10',
+                        label: '10',
+                      },
+                      {
+                        value: '20',
+                        label: '20',
+                      },
+                      {
+                        value: '50',
+                        label: '50',
+                      },
                     ]}
                     value={String(filters.top)}
                     onChange={(value) => {
                       const parsed = Number(value ?? 8);
-                      setFilters((prev) => ({ ...prev, top: Number.isFinite(parsed) ? parsed : 8 }));
+                      setFilters((prev) => ({
+                        ...prev,
+                        top: Number.isFinite(parsed) ? parsed : 8,
+                      }));
                     }}
                   />
 
                   {showValidSwitch && filters.validOnly !== null && (
                     <ToggleSwitch
                       checked={filters.validOnly}
-                      onChange={(next) => setFilters((prev) => ({ ...prev, validOnly: next }))}
-                      label='Показывать'
-                      onLabel='Валидные'
-                      offLabel='Невалидные'
+                      onChange={(next) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          validOnly: next,
+                        }))
+                      }
+                      label={t('ui.show')}
+                      onLabel={t('ui.valid')}
+                      offLabel={t('ui.invalid')}
                     />
                   )}
                 </div>
@@ -792,23 +924,28 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
       {error && <div className='mb-4 text-sm text-red-600'>{error}</div>}
 
       {!selectedCompanyId ? (
-        <EmptyState text={isTenantMode ? 'Компания не найдена' : 'Выберите компанию для просмотра статистики'} />
+        <EmptyState text={isTenantMode ? t('ui.company_not_found') : t('ui.select_a_company_to_view_statistics')} />
       ) : loading ? (
-        <EmptyState text='Загрузка статистики...' />
+        <EmptyState text={t('ui.loading_statistics')} />
       ) : !statistics ? (
-        <EmptyState text='Нет данных по выбранным фильтрам.' />
+        <EmptyState text={t('ui.there_is_no_data_for_the_selected_filters')} />
       ) : (
         <section className='space-y-6'>
           {!isTenantMode && selectedCompany && (
             <div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
-              <h2 className='text-lg font-medium'>{selectedCompany.name || `Компания ${selectedCompanyId}`}</h2>
-              <p className='text-sm text-gray-500'>Период и срез данных задаются фильтрами выше.</p>
+              <h2 className='text-lg font-medium'>
+                {selectedCompany.name ||
+                  t('ui.company_value_0', {
+                    v0: selectedCompanyId,
+                  })}
+              </h2>
+              <p className='text-sm text-gray-500'>{t('ui.the_period_and_data_slice_are_set_by')}</p>
             </div>
           )}
 
           {hasMixedCurrencies && (
             <div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800'>
-              В выборке есть несколько валют. Для точных сумм отфильтруйте статистику по одной валюте.
+              {t('ui.there_are_several_currencies_in_the_sample_for')}
             </div>
           )}
 
@@ -819,9 +956,9 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
           </div>
 
           <div className='grid grid-cols-1 xl:grid-cols-3 gap-4'>
-            <ChartCard title='Структура по типам' hint='Распределение сумм по типам транзакций'>
+            <ChartCard title={t('ui.structure_by_type')} hint={t('ui.distribution_of_amounts_by_transaction_type')}>
               {typePieData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <div className='flex justify-center'>
                   <PieChart data={typePieData} size={240} />
@@ -829,9 +966,9 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               )}
             </ChartCard>
 
-            <ChartCard title='Структура по методам' hint='Распределение по количеству транзакций'>
+            <ChartCard title={t('ui.structure_by_methods')} hint={t('ui.distribution_by_number_of_transactions')}>
               {methodPieData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <div className='flex justify-center'>
                   <PieChart data={methodPieData} size={240} />
@@ -839,9 +976,9 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               )}
             </ChartCard>
 
-            <ChartCard title='Структура по валютам' hint='Распределение сумм по валютам'>
+            <ChartCard title={t('ui.structure_by_currencies')} hint={t('ui.distribution_of_amounts_by_currency')}>
               {currencyPieData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <div className='flex justify-center'>
                   <PieChart data={currencyPieData} size={240} />
@@ -851,9 +988,9 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
           </div>
 
           <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
-            <ChartCard title='Динамика доходов' hint='По выбранной группировке периода'>
+            <ChartCard title={t('ui.income_dynamics')} hint={t('ui.by_selected_period_grouping')}>
               {trendChartData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <div className='h-[280px]'>
                   <LineChart data={trendChartData} xKey='period' yKey='incomeValue' lineColor='#16a34a' fillColor='#16a34a' />
@@ -861,9 +998,9 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
               )}
             </ChartCard>
 
-            <ChartCard title='Динамика баланса' hint='Доход минус расход'>
+            <ChartCard title={t('ui.balance_dynamics')} hint={t('ui.income_minus_expenses')}>
               {trendChartData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <div className='h-[280px]'>
                   <LineChart data={trendChartData} xKey='period' yKey='balanceValue' lineColor='#2563eb' fillColor='#2563eb' />
@@ -873,17 +1010,17 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
           </div>
 
           <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
-            <ChartCard title='Доход по категориям (Top)'>
+            <ChartCard title={t('ui.revenue_by_category_top')}>
               {categoriesBarData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <BarGraph data={categoriesBarData} height={320} />
               )}
             </ChartCard>
 
-            <ChartCard title='Доход по клиентам (Top)'>
+            <ChartCard title={t('ui.revenue_by_clients_top')}>
               {clientsBarData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <BarGraph data={clientsBarData} barColor='#14b8a6' height={320} />
               )}
@@ -891,17 +1028,17 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
           </div>
 
           <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
-            <ChartCard title='Продажи продуктов (Top)'>
+            <ChartCard title={t('ui.product_sales_top')}>
               {productsBarData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <BarGraph data={productsBarData} barColor='#7c3aed' height={320} />
               )}
             </ChartCard>
 
-            <ChartCard title='Предоставления услуг (Top)'>
+            <ChartCard title={t('ui.service_deliveries_top')}>
               {servicesBarData.length === 0 ? (
-                <div className='text-sm text-gray-500'>Нет данных.</div>
+                <div className='text-sm text-gray-500'>{t('ui.no_data_available')}</div>
               ) : (
                 <BarGraph data={servicesBarData} barColor='#f59e0b' height={320} />
               )}
@@ -909,9 +1046,9 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
           </div>
 
           <div className='space-y-2'>
-            <h2 className='text-lg font-medium'>Динамика</h2>
+            <h2 className='text-lg font-medium'>{t('ui.dynamics')}</h2>
             {statistics.trend.length === 0 ? (
-              <EmptyState text='Нет данных для построения тренда.' />
+              <EmptyState text={t('ui.there_is_no_data_to_build_a_trend')} />
             ) : (
               <TableDefault columns={trendColumns} data={statistics.trend} className='bg-transparent' />
             )}
@@ -919,27 +1056,27 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
 
           <div className='grid grid-cols-1 xl:grid-cols-3 gap-4'>
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>По типам</h2>
+              <h2 className='text-lg font-medium'>{t('ui.by_type')}</h2>
               {statistics.breakdowns.types.length === 0 ? (
-                <EmptyState text='Нет данных.' />
+                <EmptyState text={t('ui.no_data_available')} />
               ) : (
                 <TableDefault columns={keyAmountColumns} data={statistics.breakdowns.types} className='bg-transparent' />
               )}
             </div>
 
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>По методам оплаты</h2>
+              <h2 className='text-lg font-medium'>{t('ui.by_payment_method')}</h2>
               {statistics.breakdowns.methods.length === 0 ? (
-                <EmptyState text='Нет данных.' />
+                <EmptyState text={t('ui.no_data_available')} />
               ) : (
                 <TableDefault columns={keyAmountColumns} data={statistics.breakdowns.methods} className='bg-transparent' />
               )}
             </div>
 
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>По валютам</h2>
+              <h2 className='text-lg font-medium'>{t('ui.by_currencies')}</h2>
               {statistics.breakdowns.currencies.length === 0 ? (
-                <EmptyState text='Нет данных.' />
+                <EmptyState text={t('ui.no_data_available')} />
               ) : (
                 <TableDefault columns={keyAmountColumns} data={statistics.breakdowns.currencies} className='bg-transparent' />
               )}
@@ -948,18 +1085,18 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
 
           <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>Категории (Top)</h2>
+              <h2 className='text-lg font-medium'>{t('ui.categories_top')}</h2>
               {statistics.breakdowns.categories.length === 0 ? (
-                <EmptyState text='Нет данных по категориям.' />
+                <EmptyState text={t('ui.no_data_available_by_category')} />
               ) : (
                 <TableDefault columns={namedAmountColumns} data={statistics.breakdowns.categories} className='bg-transparent' />
               )}
             </div>
 
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>Клиенты (Top)</h2>
+              <h2 className='text-lg font-medium'>{t('ui.clients_top')}</h2>
               {statistics.breakdowns.clients.length === 0 ? (
-                <EmptyState text='Нет данных по клиентам.' />
+                <EmptyState text={t('ui.no_customer_data_available')} />
               ) : (
                 <TableDefault columns={namedAmountColumns} data={statistics.breakdowns.clients} className='bg-transparent' />
               )}
@@ -968,18 +1105,18 @@ export default function StatisticsPage({ tenantSlug }: StatisticsPageProps) {
 
           <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>Продукты (Top)</h2>
+              <h2 className='text-lg font-medium'>{t('ui.products_top')}</h2>
               {statistics.breakdowns.products.length === 0 ? (
-                <EmptyState text='Нет данных по продуктам.' />
+                <EmptyState text={t('ui.no_product_data_available')} />
               ) : (
                 <TableDefault columns={namedUnitsColumns} data={statistics.breakdowns.products} className='bg-transparent' />
               )}
             </div>
 
             <div className='space-y-2'>
-              <h2 className='text-lg font-medium'>Услуги (Top)</h2>
+              <h2 className='text-lg font-medium'>{t('ui.services_top')}</h2>
               {statistics.breakdowns.services.length === 0 ? (
-                <EmptyState text='Нет данных по услугам.' />
+                <EmptyState text={t('ui.no_data_on_services')} />
               ) : (
                 <TableDefault columns={namedUnitsColumns} data={statistics.breakdowns.services} className='bg-transparent' />
               )}

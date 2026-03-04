@@ -6,40 +6,44 @@ import { login } from '@/lib/api';
 import { useCookies } from '@/hooks/useCookies';
 import { getJwtExpiryDate } from '@/lib/jwt';
 import { formatLocalPhone, isLocalPhoneComplete, toFullPhoneNumber } from '@/lib/phone';
+import { syncLocaleFromAccessToken, t } from '@/i18n';
 import InputDefault from '@/components/Inputs/InputDefault';
 import ButtonDefault from '../Buttons/ButtonDefault';
-
 interface FormState {
   phone: string;
   password: string;
 }
-
 export default function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/';
   const cookies = useCookies();
-
-  const [state, setState] = useState<FormState>({ phone: '', password: '' });
+  const [state, setState] = useState<FormState>({
+    phone: '',
+    password: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'phone') {
-      setState((s) => ({ ...s, phone: formatLocalPhone(value) }));
+      setState((s) => ({
+        ...s,
+        phone: formatLocalPhone(value),
+      }));
       return;
     }
-    setState((s) => ({ ...s, [name]: value }));
+    setState((s) => ({
+      ...s,
+      [name]: value,
+    }));
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
       if (!isLocalPhoneComplete(state.phone)) {
-        setError('Введите корректный номер телефона');
+        setError(t('ui.enter_a_correct_phone_number'));
         setLoading(false);
         return;
       }
@@ -47,43 +51,37 @@ export default function LoginForm() {
         phone: toFullPhoneNumber(state.phone),
         password: state.password,
       };
-
       const tokens = await login(payload);
-
       const secure = window.location.protocol === 'https:';
-
       const accessExp = getJwtExpiryDate(tokens.access);
       const refreshExp = getJwtExpiryDate(tokens.refresh);
-
       cookies.set('access', tokens.access, {
         path: '/',
         expires: accessExp ?? undefined,
         sameSite: 'lax',
         secure,
       });
-
       cookies.set('refresh', tokens.refresh, {
         path: '/',
         expires: refreshExp ?? undefined,
         sameSite: 'lax',
         secure,
       });
-
+      syncLocaleFromAccessToken(tokens.access);
       window.location.replace(next || '/');
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.detail ?? err?.message ?? 'Не удалось выполнить вход. Проверьте телефон и пароль.');
+      setError(err?.response?.data?.detail ?? err?.message ?? t('ui.failed_to_sign_in_check_your_phone_and'));
       setLoading(false);
     }
   };
-
   return (
     <div className='max-w-md mx-auto mt-10 p-6 bg-white shadow-md rounded-lg'>
-      <h2 className='mb-3 text-2xl font-bold'>Вход в систему</h2>
+      <h2 className='mb-3 text-2xl font-bold'>{t('ui.login_2')}</h2>
 
       <form onSubmit={handleSubmit} className='space-y-4'>
         <InputDefault
-          label='Телефон'
+          label={t('ui.phone')}
           name='phone'
           value={state.phone}
           onChange={handleChange}
@@ -97,7 +95,7 @@ export default function LoginForm() {
         />
 
         <InputDefault
-          label='Пароль'
+          label={t('ui.password')}
           name='password'
           type='password'
           value={state.password}
@@ -106,10 +104,10 @@ export default function LoginForm() {
           required
         />
 
-        {error && <div className='text-red-600'>Не удалось авторизоваться</div>}
+        {error && <div className='text-red-600'>{t('ui.failed_to_login')}</div>}
 
         <ButtonDefault type='submit' variant='dark' className='w-full' disabled={loading}>
-          {loading ? 'Загрузка...' : 'Войти'}
+          {loading ? t('ui.loading') : t('ui.login')}
         </ButtonDefault>
       </form>
     </div>

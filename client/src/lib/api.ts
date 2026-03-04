@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LoginPayload, TokenResponse, RefreshPayload, AccessTokenResponse } from '@/types/api/auth';
 import { PaginatedResponse } from '@/types/api/pagination';
 import { BaseQuery } from '@/types/api/common';
+import { syncLocaleFromAccessToken } from '@/i18n';
 import { User } from '@/types/api/users';
 import { Company, CompanySlugLookup } from '@/types/api/companies';
 import { Transaction, TransactionCategory } from '@/types/api/transactions';
@@ -87,6 +88,7 @@ apiClient.interceptors.response.use(
           }
         })();
         document.cookie = `access=${encodeURIComponent(newAccess)}; Path=/; ${expires ? `Expires=${expires};` : ''} SameSite=Lax`;
+        syncLocaleFromAccessToken(newAccess);
 
         originalRequest.headers['Authorization'] = `Bearer ${newAccess}`;
         return apiClient(originalRequest);

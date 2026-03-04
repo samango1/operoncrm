@@ -7,7 +7,6 @@ import type { Client } from '@/types/api/clients';
 import type { PlatformRole } from '@/types/api/users';
 import type { Product } from '@/types/api/products';
 import type { Service } from '@/types/api/services';
-
 import {
   getCompanies,
   getCompanyBySlug,
@@ -21,7 +20,6 @@ import {
 import { formatPhoneDisplay } from '@/lib/phone';
 import { getPlatformRoleFromCookie } from '@/lib/role';
 import { formatMoney } from '@/lib/decimal';
-
 import TableDefault, { Column } from '@/components/Tables/TableDefault';
 import Pagination from '@/components/Layouts/Pagination';
 import ModalWindowDefault from '@/components/ModalWindows/ModalWindowDefault';
@@ -30,13 +28,11 @@ import SearchInput from '@/components/Inputs/SearchInput';
 import SelectOption from '@/components/Inputs/SelectOption';
 import TransactionForm from '@/components/Forms/TransactionForm';
 import ToggleSwitch from '@/components/Inputs/ToggleSwitch';
-
 import { Pencil, Eye, Funnel } from 'lucide-react';
-
+import { t } from '@/i18n';
 type TransactionsPageProps = {
   tenantSlug?: string;
 };
-
 export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -47,7 +43,6 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(undefined);
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -55,28 +50,26 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
   const [totalCount, setTotalCount] = useState<number>(0);
   const [validOnly, setValidOnly] = useState<boolean | null>(null);
   const [role, setRole] = useState<PlatformRole | null>(null);
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-
   const isTenantMode = Boolean(tenantSlug);
-
   const fetchCompanies = async () => {
     try {
-      const companiesRes = await getCompanies({ page: 1, page_size: 1000 });
+      const companiesRes = await getCompanies({
+        page: 1,
+        page_size: 1000,
+      });
       setCompanies(companiesRes.results as Company[]);
     } catch (err) {
       console.error('fetchCompanies error:', err);
-      setError('Не удалось загрузить компании');
+      setError(t('ui.failed_to_load_companies'));
     }
   };
-
   const fetchClients = async (companyId?: string) => {
     if (isTenantMode && !companyId) {
       setClients([]);
@@ -84,14 +77,19 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
     }
     try {
       const clientsRes = isTenantMode
-        ? await getCompanyClients(String(companyId), { page: 1, page_size: 1000 })
-        : await getClients({ page: 1, page_size: 1000 });
+        ? await getCompanyClients(String(companyId), {
+            page: 1,
+            page_size: 1000,
+          })
+        : await getClients({
+            page: 1,
+            page_size: 1000,
+          });
       setClients(clientsRes.results as Client[]);
     } catch (err) {
       console.error('fetchClients error:', err);
     }
   };
-
   const fetchTransactions = async (
     companyId: string,
     page = currentPage,
@@ -104,47 +102,53 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setTotalCount(0);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
-      const txRes = await getCompanyTransactions(companyId, { page, page_size: ps, search, valid: valid ?? undefined });
+      const txRes = await getCompanyTransactions(companyId, {
+        page,
+        page_size: ps,
+        search,
+        valid: valid ?? undefined,
+      });
       setTransactions(txRes.results as Transaction[]);
       setTotalCount(txRes.count);
     } catch (err) {
       console.error('fetchTransactions error:', err);
-      setError('Не удалось загрузить транзакции');
+      setError(t('ui.failed_to_load_transactions'));
     } finally {
       setLoading(false);
     }
   };
-
   const fetchProducts = async (companyId: string) => {
     try {
-      const res = await getCompanyProducts(companyId, { page: 1, page_size: 1000 });
+      const res = await getCompanyProducts(companyId, {
+        page: 1,
+        page_size: 1000,
+      });
       setProducts(res.results as Product[]);
     } catch (err) {
       console.error('fetchProducts error:', err);
       setProducts([]);
     }
   };
-
   const fetchServices = async (companyId: string) => {
     try {
-      const res = await getCompanyServices(companyId, { page: 1, page_size: 1000 });
+      const res = await getCompanyServices(companyId, {
+        page: 1,
+        page_size: 1000,
+      });
       setServices(res.results as Service[]);
     } catch (err) {
       console.error('fetchServices error:', err);
       setServices([]);
     }
   };
-
   useEffect(() => {
     if (isTenantMode) return;
     fetchCompanies();
     fetchClients();
   }, [isTenantMode]);
-
   useEffect(() => {
     if (!tenantSlug) return;
     const fetchTenantCompany = async () => {
@@ -160,7 +164,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
         setCompanies(companyRes ? [companyRes as Company] : []);
       } catch (err) {
         console.error('getCompanyBySlug error:', err);
-        setError('Не удалось загрузить компанию');
+        setError(t('ui.failed_to_load_company'));
         setTenantCompany(null);
         setSelectedCompanyId(undefined);
         setCompanies([]);
@@ -170,12 +174,10 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
     };
     fetchTenantCompany();
   }, [tenantSlug]);
-
   useEffect(() => {
     const resolvedRole = getPlatformRoleFromCookie();
     setRole(resolvedRole);
   }, []);
-
   useEffect(() => {
     if (isTenantMode) {
       setValidOnly(null);
@@ -189,7 +191,6 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setValidOnly((prev) => (prev === null ? true : prev));
     }
   }, [role, isTenantMode]);
-
   useEffect(() => {
     if (selectedCompanyId) {
       fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch, validOnly);
@@ -198,7 +199,6 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setTotalCount(0);
     }
   }, [selectedCompanyId, currentPage, pageSize, globalSearch, validOnly]);
-
   useEffect(() => {
     if (selectedCompanyId) {
       fetchProducts(selectedCompanyId);
@@ -208,7 +208,6 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setServices([]);
     }
   }, [selectedCompanyId]);
-
   useEffect(() => {
     if (!isTenantMode) return;
     if (!selectedCompanyId) {
@@ -217,16 +216,22 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
     }
     fetchClients(selectedCompanyId);
   }, [isTenantMode, selectedCompanyId]);
-
   const selectedCompany = useMemo(() => {
     if (isTenantMode) return tenantCompany ?? undefined;
     if (!selectedCompanyId) return undefined;
     return companies.find((c) => String(c.id) === String(selectedCompanyId));
   }, [isTenantMode, tenantCompany, selectedCompanyId, companies]);
-
   const formatCategoryNames = (cats?: Transaction['categories']) => {
     if (!cats || cats.length === 0) return '';
-    return (cats as Array<string | { id?: string; name?: string }>)
+    return (
+      cats as Array<
+        | string
+        | {
+            id?: string;
+            name?: string;
+          }
+      >
+    )
       .map((c) => {
         if (typeof c === 'string') return c;
         return c.name ?? String(c.id ?? '');
@@ -234,10 +239,17 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       .filter(Boolean)
       .join(', ');
   };
-
   const formatProductNames = (items?: Transaction['products']) => {
     if (!items || items.length === 0) return '';
-    return (items as Array<string | { id?: string; name?: string }>)
+    return (
+      items as Array<
+        | string
+        | {
+            id?: string;
+            name?: string;
+          }
+      >
+    )
       .map((p) => {
         if (typeof p === 'string') return p;
         return p.name ?? String(p.id ?? '');
@@ -245,10 +257,17 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       .filter(Boolean)
       .join(', ');
   };
-
   const formatServiceNames = (items?: Transaction['services']) => {
     if (!items || items.length === 0) return '';
-    return (items as Array<string | { id?: string; name?: string }>)
+    return (
+      items as Array<
+        | string
+        | {
+            id?: string;
+            name?: string;
+          }
+      >
+    )
       .map((s) => {
         if (typeof s === 'string') return s;
         return s.name ?? String(s.id ?? '');
@@ -256,7 +275,6 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       .filter(Boolean)
       .join(', ');
   };
-
   const openViewModal = async (txId: string) => {
     if (!selectedCompanyId) return;
     setIsModalOpen(true);
@@ -269,12 +287,11 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setSelectedTransaction(item as Transaction);
     } catch (err) {
       console.error('getCompanyTransactionById error:', err);
-      setModalError('Не удалось загрузить транзакцию');
+      setModalError(t('ui.failed_to_load_transaction'));
     } finally {
       setModalLoading(false);
     }
   };
-
   const openEditModal = async (txId: string) => {
     if (!selectedCompanyId) return;
     setIsModalOpen(true);
@@ -287,28 +304,26 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setSelectedTransaction(item as Transaction);
     } catch (err) {
       console.error('getCompanyTransactionById error:', err);
-      setModalError('Не удалось загрузить транзакцию');
+      setModalError(t('ui.failed_to_load_transaction'));
     } finally {
       setModalLoading(false);
     }
   };
-
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedTransaction(null);
     setModalError(null);
     setIsEditing(false);
   };
-
   const columns: Column<Transaction>[] = [
     {
       key: 'date',
-      label: 'Дата',
+      label: t('ui.date'),
       render: (r) => ((r.date ?? r.created_at) ? String(r.date ?? r.created_at).slice(0, 10) : ''),
     },
     {
       key: 'amount_currency',
-      label: 'Сумма',
+      label: t('ui.amount'),
       render: (r) => {
         const amt = isTenantMode ? (r.initial_amount ?? r.amount ?? '') : (r.amount ?? '');
         const formatted = formatMoney(amt);
@@ -323,7 +338,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
     },
     {
       key: 'client',
-      label: 'Клиент',
+      label: t('ui.client'),
       render: (r) => {
         if (!r.client) return '';
         if (typeof r.client === 'string') return r.client;
@@ -334,7 +349,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
     },
     {
       key: 'actions',
-      label: 'Действия',
+      label: t('ui.actions'),
       render: (row: Transaction) => (
         <div className='flex gap-2'>
           <ButtonDefault
@@ -361,19 +376,15 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       className: 'w-40',
     },
   ];
-
   const openCreate = () => {
     setIsCreateOpen(true);
   };
-
   const closeCreate = () => {
     setIsCreateOpen(false);
   };
-
   const onCreated = async () => {
     if (selectedCompanyId) await fetchTransactions(selectedCompanyId, currentPage, pageSize, globalSearch);
   };
-
   const handlePageChange = (page: number, newPageSize?: number) => {
     if (newPageSize && newPageSize !== pageSize) {
       setPageSize(newPageSize);
@@ -382,36 +393,35 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
       setCurrentPage(page);
     }
   };
-
   const handleSearch = (q: string) => {
     setGlobalSearch(q);
     setCurrentPage(1);
   };
-
   const companyOptions = useMemo(() => {
     return companies.map((c) => ({
       value: String(c.id),
       label: c.name || c.slug || String(c.id),
     }));
   }, [companies]);
-
   const headerSubtitle = isTenantMode
     ? companyLoading
-      ? 'Загрузка компании...'
+      ? t('ui.loading_company')
       : selectedCompanyId
-        ? `Всего транзакций: ${totalCount}`
-        : 'Компания не найдена'
+        ? t('ui.total_transactions_value_0', {
+            v0: totalCount,
+          })
+        : t('ui.company_not_found')
     : selectedCompanyId
-      ? `Всего транзакций: ${totalCount}`
-      : 'Выберите компанию для просмотра транзакций';
-
+      ? t('ui.total_transactions_value_0', {
+          v0: totalCount,
+        })
+      : t('ui.select_a_company_to_view_transactions');
   const showValidSwitch = !isTenantMode && (role === 'admin' || role === 'agent');
-
   return (
     <>
       <section className='mb-6 flex justify-between items-center'>
         <div>
-          <h1 className='text-2xl font-semibold'>Транзакции</h1>
+          <h1 className='text-2xl font-semibold'>{t('ui.transactions')}</h1>
           <p className='text-sm text-gray-500'>{headerSubtitle}</p>
         </div>
 
@@ -420,13 +430,13 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
           variant='positive'
           onClick={() => {
             if (!selectedCompanyId) {
-              alert(isTenantMode ? 'Компания не найдена' : 'Сначала выберите компанию');
+              alert(isTenantMode ? t('ui.company_not_found') : t('ui.first_select_a_company'));
               return;
             }
             openCreate();
           }}
         >
-          Добавить
+          {t('ui.add')}
         </ButtonDefault>
       </section>
 
@@ -434,8 +444,8 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
         {!isTenantMode && (
           <div>
             <SelectOption
-              label='Компания'
-              placeholder='Выберите компанию'
+              label={t('ui.company')}
+              placeholder={t('ui.select_a_company')}
               options={companyOptions}
               value={selectedCompanyId}
               onChange={(value) => {
@@ -453,13 +463,13 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
               <SearchInput
                 initialValue={globalSearch}
                 onSearch={handleSearch}
-                placeholder='Поиск по описанию, типу, методу, валюте, суммам, категориям'
+                placeholder={t('ui.search_by_description_type_method_currency_amounts_categories')}
               />
               {!isTenantMode && (
                 <ButtonDefault
                   type='button'
                   onClick={() => setShowFilters((v) => !v)}
-                  aria-label='Показать фильтры'
+                  aria-label={t('ui.show_filters')}
                   variant={showFilters ? 'positive' : 'outline'}
                 >
                   <Funnel />
@@ -475,9 +485,9 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                       setValidOnly(next);
                       setCurrentPage(1);
                     }}
-                    label='Показывать'
-                    onLabel='Валидные'
-                    offLabel='Невалидные'
+                    label={t('ui.show')}
+                    onLabel={t('ui.valid')}
+                    offLabel={t('ui.invalid')}
                   />
                 )}
               </div>
@@ -490,21 +500,30 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
 
       {!selectedCompanyId ? (
         <div className='text-gray-600 p-6 bg-white/5 rounded'>
-          {isTenantMode ? 'Компания не найдена' : 'Выберите компанию для просмотра транзакций'}
+          {isTenantMode ? t('ui.company_not_found') : t('ui.select_a_company_to_view_transactions')}
         </div>
       ) : loading ? (
-        <div className='p-6 bg-white/5 rounded text-gray-500'>Загрузка...</div>
+        <div className='p-6 bg-white/5 rounded text-gray-500'>{t('ui.loading')}</div>
       ) : transactions.length === 0 ? (
         <div className='text-gray-600 p-6 bg-white/5 rounded'>
-          {globalSearch ? 'Нет транзакций, соответствующих запросу.' : 'Нет транзакций для этой компании.'}
+          {globalSearch
+            ? t('ui.there_are_no_transactions_matching_the_request')
+            : t('ui.there_are_no_transactions_for_this_company')}
         </div>
       ) : (
         <section className='space-y-4'>
           {!isTenantMode && (
             <div className='flex justify-between items-center mb-3'>
               <div>
-                <h2 className='text-lg font-medium'>{selectedCompany?.name || `Компания ${selectedCompanyId}`}</h2>
-                <div className='text-sm text-gray-500'>Транзакций: {totalCount}</div>
+                <h2 className='text-lg font-medium'>
+                  {selectedCompany?.name ||
+                    t('ui.company_value_0', {
+                      v0: selectedCompanyId,
+                    })}
+                </h2>
+                <div className='text-sm text-gray-500'>
+                  {t('ui.transactions_3')} {totalCount}
+                </div>
               </div>
             </div>
           )}
@@ -524,7 +543,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
 
       <ModalWindowDefault isOpen={isCreateOpen} onClose={closeCreate} showCloseIcon>
         <div>
-          <h2 className='text-xl font-semibold mb-4'>Новая транзакция</h2>
+          <h2 className='text-xl font-semibold mb-4'>{t('ui.new_transaction')}</h2>
 
           <TransactionForm
             companies={companies}
@@ -543,10 +562,10 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
           {isEditing ? (
             <>
               <h2 className='text-xl font-semibold mb-4'>
-                {selectedTransaction ? 'Редактирование транзакции' : 'Загрузка транзакции...'}
+                {selectedTransaction ? t('ui.editing_a_transaction') : t('ui.loading_transaction')}
               </h2>
 
-              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+              {modalLoading && <div className='text-sm text-gray-500'>{t('ui.loading')}</div>}
 
               {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
 
@@ -574,9 +593,9 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
             </>
           ) : (
             <>
-              <h2 className='text-xl font-semibold mb-4'>Просмотр транзакции</h2>
+              <h2 className='text-xl font-semibold mb-4'>{t('ui.view_transaction')}</h2>
 
-              {modalLoading && <div className='text-sm text-gray-500'>Загрузка...</div>}
+              {modalLoading && <div className='text-sm text-gray-500'>{t('ui.loading')}</div>}
 
               {modalError && <div className='text-sm text-red-600'>{modalError}</div>}
 
@@ -586,13 +605,14 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                     <strong>ID:</strong> {selectedTransaction.id}
                   </div>
                   <div>
-                    <strong>Дата:</strong> {(selectedTransaction.date ?? selectedTransaction.created_at ?? '').slice(0, 10)}
+                    <strong>{t('ui.date_2')}</strong>{' '}
+                    {(selectedTransaction.date ?? selectedTransaction.created_at ?? '').slice(0, 10)}
                   </div>
                   <div>
-                    <strong>Тип:</strong> {selectedTransaction.type}
+                    <strong>{t('ui.type_2')}</strong> {selectedTransaction.type}
                   </div>
                   <div>
-                    <strong>Сумма:</strong>{' '}
+                    <strong>{t('ui.amount_2')}</strong>{' '}
                     {formatMoney(
                       isTenantMode
                         ? (selectedTransaction.initial_amount ?? selectedTransaction.amount)
@@ -601,7 +621,7 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                     {selectedTransaction.currency}
                   </div>
                   <div>
-                    <strong>Клиент:</strong>{' '}
+                    <strong>{t('ui.client_2')}</strong>{' '}
                     {selectedTransaction.client
                       ? typeof selectedTransaction.client === 'string'
                         ? selectedTransaction.client
@@ -611,20 +631,20 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                       : ''}
                   </div>
                   <div>
-                    <strong>Категории:</strong> {formatCategoryNames(selectedTransaction.categories)}
+                    <strong>{t('ui.categories_2')}</strong> {formatCategoryNames(selectedTransaction.categories)}
                   </div>
                   <div>
-                    <strong>Продукты:</strong> {formatProductNames(selectedTransaction.products)}
+                    <strong>{t('ui.products_3')}</strong> {formatProductNames(selectedTransaction.products)}
                   </div>
                   <div>
-                    <strong>Услуги:</strong> {formatServiceNames(selectedTransaction.services)}
+                    <strong>{t('ui.services_4')}</strong> {formatServiceNames(selectedTransaction.services)}
                   </div>
                   <div>
-                    <strong>Начало услуг:</strong>{' '}
+                    <strong>{t('ui.start_of_services_2')}</strong>{' '}
                     {selectedTransaction.services_starts_at ? String(selectedTransaction.services_starts_at).slice(0, 16) : ''}
                   </div>
                   <div>
-                    <strong>Компания:</strong>{' '}
+                    <strong>{t('ui.company_2')}</strong>{' '}
                     {selectedTransaction.company
                       ? typeof selectedTransaction.company === 'string'
                         ? selectedTransaction.company
@@ -632,16 +652,16 @@ export default function TransactionsPage({ tenantSlug }: TransactionsPageProps) 
                       : ''}
                   </div>
                   <div>
-                    <strong>Описание:</strong> {selectedTransaction.description ?? ''}
+                    <strong>{t('ui.description_2')}</strong> {selectedTransaction.description ?? ''}
                   </div>
                   <div>
-                    <strong>Создан:</strong> {selectedTransaction.created_at ?? ''}
+                    <strong>{t('ui.created_by')}</strong> {selectedTransaction.created_at ?? ''}
                   </div>
                   <div>
-                    <strong>Обновлен:</strong> {selectedTransaction.updated_at ?? ''}
+                    <strong>{t('ui.updated_2')}</strong> {selectedTransaction.updated_at ?? ''}
                   </div>
                   <div>
-                    <strong>Действительная:</strong> {selectedTransaction.valid ? 'Да' : 'Нет'}
+                    <strong>{t('ui.valid_2')}</strong> {selectedTransaction.valid ? t('ui.yes') : t('ui.no')}
                   </div>
                 </div>
               )}
