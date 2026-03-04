@@ -66,6 +66,7 @@ python manage.py spectacular --file /tmp/schema.yaml --validate
 ```bash
 cd server
 cp .env.example .env
+echo "DJANGO_SETTINGS_MODULE=config.settings.dev" >> .env
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -73,7 +74,10 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:9999
 ```
 
-By default, `config.settings.dev` is used (SQLite), unless overridden in `.env`.
+Minimum value for `server/.env`:
+```dotenv
+DJANGO_SETTINGS_MODULE=config.settings.dev
+```
 
 ### 2) Frontend (new terminal)
 
